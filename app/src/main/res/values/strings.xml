@@ -1,3 +1,10 @@
 <resources>
-    <string name="app_name">io.grpc.helloworldexample</string>
+    <string name="app_name">StreamingConvertTest</string>
+    <string name="startRecording">push Start recording</string>
+    <string name="stopRecording">push Stop recording</string>
+    <string name="permission_message">This app needs to record audio and recognize your speech.</string>
+    <string name="listening">Listening…</string>
+    <string name="load_file">Load file</string>
+    <string name="controlUI">control UI</string>
+    <string name="indicator">indicate condition</string>
 </resources>

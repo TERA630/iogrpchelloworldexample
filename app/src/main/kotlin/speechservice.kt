@@ -1,4 +1,4 @@
-package com.example.gRPCTest
+package io.grpc.hallowrldexample
 
 import android.app.Service
 import android.content.Context
@@ -19,7 +19,7 @@ import java.net.URISyntaxException
 import java.util.*
 import java.util.concurrent.TimeUnit
 
-class SpeechService : Service() {
+class SpeechService : Service(){
     private val TAG = "SpeechService"
 
     private val HOSTNAME = "speech.googleapis.com"
@@ -37,7 +37,7 @@ class SpeechService : Service() {
     private val ACCESS_TOKEN_FETCH_MARGIN = 60 * 1000 // one minute
 
 
-    private val mBinder: SpeechBinder = SpeechBinder()
+    private val mBinder:SpeechBinder = SpeechBinder()
     private var mHandler: Handler? = null
     private var mAccessTokenTask: AccessTokenTask? = null
     private lateinit var mApi: SpeechGrpc.SpeechStub
@@ -50,8 +50,7 @@ class SpeechService : Service() {
         mHandler = Handler()
         fetchAccessToken()
     }
-
-    //
+//
 //    override fun onDestroy() {
 //        super.onDestroy()
 //        mHandler?.let{ it.removeCallbacks(mFetchAccessTokenRunnable)}
@@ -66,27 +65,25 @@ class SpeechService : Service() {
 //            }
 //        }
 //    }
-    fun from(binder: IBinder): SpeechService {
+    fun from(binder: IBinder):SpeechService{
         return (binder as SpeechBinder).getService()
     }
 
-    private fun fetchAccessToken() {
-
+    private fun fetchAccessToken(){
         if (mAccessTokenTask != null) {
             return
-        } else {
+        }  else {
             mAccessTokenTask = AccessTokenTask() // TokenTaskが開始されていなければ､非同期に暗号鍵をRAW/JSONから作成し､ACCESSTOKENを新しくする｡
             mAccessTokenTask!!.execute() //　
         }
     }
-
-    val mFetchAccessTokenRunnable = object : Runnable {
+    val mFetchAccessTokenRunnable = object : Runnable{
         override fun run() {
             fetchAccessToken()
         }
     }
 
-    private inner class AccessTokenTask : AsyncTask<Void, Void, AccessToken>() {
+    private inner class AccessTokenTask: AsyncTask<Void, Void, AccessToken>() {
 
         override fun doInBackground(vararg params: Void?): AccessToken? {
 
@@ -95,8 +92,8 @@ class SpeechService : Service() {
             val expirationTime: Long = prefs.getLong(PREF_ACCESS_TOKEN_EXPIRATION_TIME, -1L)
 
             // check if the current token is still valid
-            if (tokenValue != null && expirationTime > 0) {
-                if (expirationTime > System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION_TOLERANCE) {
+            if(tokenValue != null && expirationTime>0){
+                if(expirationTime > System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION_TOLERANCE){
                     return AccessToken(tokenValue, Date(expirationTime))
                 }
             }
@@ -130,8 +127,7 @@ class SpeechService : Service() {
                 .intercept(interceptor)
                 .build()
             mApi = SpeechGrpc.newStub(channel)
-            mHandler?.postDelayed(
-                mFetchAccessTokenRunnable,
+            mHandler?.postDelayed(mFetchAccessTokenRunnable,
                 java.lang.Long.max(
                     result.expirationTime.time - System.currentTimeMillis() - ACCESS_TOKEN_FETCH_MARGIN,
                     ACCESS_TOKEN_EXPIRATION_TOLERANCE.toLong()
@@ -140,8 +136,8 @@ class SpeechService : Service() {
         }
     }
 
-    inner class SpeechBinder : Binder() {
-        fun getService(): SpeechService {
+    inner class SpeechBinder: Binder(){
+        fun getService():SpeechService{
             return this@SpeechService
         }
     }
@@ -164,10 +160,10 @@ class SpeechService : Service() {
 
                     override fun checkedStart(responseListener: Listener<RespT>?, headers: Metadata) {
                         val cachedSaved: Metadata
-                        val uri = serviceUri(next, method)
-                        synchronized(this) {
+                        val uri = serviceUri(next,method)
+                        synchronized(this){
                             val latestMetadata = getRequestMetadata(uri)
-                            if (mLastMetadata == null || mLastMetadata != latestMetadata) {
+                            if(mLastMetadata == null || mLastMetadata != latestMetadata){
                                 mLastMetadata = latestMetadata
                                 mCached = toHeaders(mLastMetadata!!)
 
@@ -175,16 +171,15 @@ class SpeechService : Service() {
                             cachedSaved = mCached
                         }
                         headers.merge(cachedSaved)
-                        delegate().start(responseListener, headers)
+                        delegate().start(responseListener,headers)
                     }
                 }
             return clientCall
         }
-
         @Throws(StatusException::class)
-        private fun <ReqT, RespT> serviceUri(channel: Channel, method: MethodDescriptor<ReqT, RespT>): URI {
+        private fun <ReqT,RespT>  serviceUri(channel: Channel, method: MethodDescriptor<ReqT, RespT>): URI {
             val authority = channel.authority()
-            if (authority == null) {
+            if(authority==null){
                 throw Status.UNAUTHENTICATED
                     .withDescription("Channel has no autority")
                     .asException()
@@ -193,12 +188,10 @@ class SpeechService : Service() {
                 val defaultPort = 443
                 val path = "/${MethodDescriptor.extractFullServiceName(method.fullMethodName)}"
                 try {
-                    val uri = URI(scheme, authority, path, null, null)
-                    if (uri.port == defaultPort) {
-                        removePort(uri)
-                    }
+                    val uri = URI(scheme,authority,path,null,null )
+                    if(uri.port == defaultPort){ removePort(uri)}
                     return uri
-                } catch (e: URISyntaxException) {
+                } catch (e: URISyntaxException){
                     throw Status.UNAUTHENTICATED
                         .withDescription("Unable to construct service URI for auth")
                         .withCause(e).asException()
@@ -211,32 +204,28 @@ class SpeechService : Service() {
         fun removePort(uri: URI): URI {
             try {
                 return URI(
-                    uri.scheme, uri.userInfo, uri.host, -1, uri.path, uri.query, uri.fragment
-                )
+                    uri.scheme, uri.userInfo, uri.host, -1, uri.path, uri.query, uri.fragment)
             } catch (e: URISyntaxException) {
                 throw Status.UNAUTHENTICATED
                     .withDescription("Unable to construct service URI after removing port")
                     .withCause(e).asException()
             }
         }
-
         @Throws(StatusException::class)
-        fun getRequestMetadata(uri: URI): Map<String, List<String>> {
-            try {
+        fun getRequestMetadata(uri: URI):Map<String,List<String>>{
+            try{
                 return mCredentials.getRequestMetadata(uri)
-            } catch (e: IOException) {
+            } catch (e: IOException){
                 throw Status.UNAUTHENTICATED.withCause(e).asException()
             }
         }
-
-        fun toHeaders(metadata: Map<String, List<String>>): Metadata {
+        fun toHeaders( metadata: Map< String, List<String> >): Metadata {
             val headers: Metadata = Metadata()
-            for (key in metadata.keys) {
+            for( key in metadata.keys){
                 val headerKey = Metadata.Key.of(
-                    key, Metadata.ASCII_STRING_MARSHALLER
-                )
+                    key, Metadata.ASCII_STRING_MARSHALLER)
                 val list = metadata[key] ?: emptyList()
-                for (value in list) {
+                for( value in list) {
                     headers.put(headerKey, value)
                 }
             }

@@ -20,18 +20,18 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var mAdapter: ResultAdapter
     //  private var mVoiceRecorder:VoiceRecorder? = null
-    //  private lateinit var mSpeechService: SpeechService
+    private lateinit var mSpeechService: SpeechService
 
-    /*  private var mServiceConnection:ServiceConnection = object: ServiceConnection{
+    private var mServiceConnection:ServiceConnection = object: ServiceConnection{
           override fun onServiceConnected(name: ComponentName?, service: IBinder) {
               mSpeechService = SpeechService().from(service)
               Log.i("test","service connected.")
 
           }
           override fun onServiceDisconnected(name: ComponentName?) {
-              TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+              Log.i("test","service connected.")
           }
-      }*/
+      }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,7 +44,7 @@ class MainActivity : AppCompatActivity() {
         val result = if (savedInstanceState != null) {
             savedInstanceState.getStringArrayList(STATE_RESULTS) ?: arrayListOf("fail to get savedInstance..")
         } else {
-            arrayListOf("one", "two", "three", "four")
+            arrayListOf("one", "two", "three", "four","five","six")
         }
         mAdapter = ResultAdapter(result)
         recyclerView.adapter = mAdapter
@@ -56,11 +56,11 @@ class MainActivity : AppCompatActivity() {
         outState?.putStringArrayList(STATE_RESULTS, mAdapter.getResults())
     }
 
-    /* override fun onStart() {
+    override fun onStart() {
          super.onStart()
          // Prepare Cloud Speech API
          val intent = Intent(this,SpeechService::class.java)
          bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE)
-     }*/
+     }
 
 }

@@ -6,8 +6,8 @@ apply plugin: 'kotlin-android-extensions'
 android {
     compileSdkVersion 28
     defaultConfig {
-        applicationId "io.grpc.helloworldexample"
-        minSdkVersion 14
+        applicationId "com.example.gRPCTest"
+        minSdkVersion 17
         targetSdkVersion 28
         versionCode 1
         versionName "1.0"

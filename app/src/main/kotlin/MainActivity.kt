@@ -1,4 +1,4 @@
-package io.grpc.hallowrldexample
+package com.example.gRPCTest
 
 import android.content.Context
 import android.os.Bundle
@@ -11,7 +11,6 @@ import android.os.IBinder
 import android.os.PersistableBundle
 import android.support.v7.widget.LinearLayoutManager
 import android.util.Log
-import io.grpc.helloworldexample.R
 import kotlinx.android.synthetic.main.activity_main.*
 
 const val STATE_RESULTS = "results"
@@ -20,18 +19,10 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var mAdapter: ResultAdapter
     //  private var mVoiceRecorder:VoiceRecorder? = null
-    //  private lateinit var mSpeechService: SpeechService
+    private lateinit var mSpeechService: SpeechService
 
-    /*  private var mServiceConnection:ServiceConnection = object: ServiceConnection{
-          override fun onServiceConnected(name: ComponentName?, service: IBinder) {
-              mSpeechService = SpeechService().from(service)
-              Log.i("test","service connected.")
+    private lateinit var mServiceConnection: ServiceConnection
 
-          }
-          override fun onServiceDisconnected(name: ComponentName?) {
-              TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-          }
-      }*/
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,11 +35,23 @@ class MainActivity : AppCompatActivity() {
         val result = if (savedInstanceState != null) {
             savedInstanceState.getStringArrayList(STATE_RESULTS) ?: arrayListOf("fail to get savedInstance..")
         } else {
-            arrayListOf("one", "two", "three", "four")
+            arrayListOf("one", "two", "three", "four","five")
         }
         mAdapter = ResultAdapter(result)
         recyclerView.adapter = mAdapter
 
+        mServiceConnection = object: ServiceConnection{
+            override fun onServiceConnected(name: ComponentName?, service: IBinder) {
+                mSpeechService = SpeechService().from(service)
+                Log.i("test","service connected.")
+            }
+            override fun onServiceDisconnected(name: ComponentName?) {
+                Log.i("test","service disconnected")
+            }
+        }
+        startRecordingBtn.setOnClickListener {
+            unbindService(mServiceConnection)
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle?, outPersistentState: PersistableBundle?) {
@@ -56,11 +59,11 @@ class MainActivity : AppCompatActivity() {
         outState?.putStringArrayList(STATE_RESULTS, mAdapter.getResults())
     }
 
-    /* override fun onStart() {
+    override fun onStart() {
          super.onStart()
          // Prepare Cloud Speech API
-         val intent = Intent(this,SpeechService::class.java)
+         val intent = Intent(this, SpeechService::class.java)
          bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE)
-     }*/
+     }
 
 }

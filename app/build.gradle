@@ -14,7 +14,10 @@ android {
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
-        debug { minifyEnabled false }
+        debug {
+            minifyEnabled false
+            multiDexEnabled true
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -24,6 +27,9 @@ android {
         main.java.srcDirs += 'src/main/kotlin'
         test.java.srcDirs += 'src/test/kotlin'
         androidTest.java.srcDirs += 'src/androidTest/kotlin'
+    }
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
     }
     protobuf {
         protoc { artifact = 'com.google.protobuf:protoc:3.7.1' }
@@ -54,6 +60,9 @@ android {
         implementation 'io.grpc:grpc-okhttp:1.20.0' // CURRENT_GRPC_VERSION
         implementation 'io.grpc:grpc-protobuf-lite:1.20.0' // CURRENT_GRPC_VERSION
         implementation 'io.grpc:grpc-stub:1.20.0' // CURRENT_GRPC_VERSION
+    //
+        implementation 'com.google.auth:google-auth-library-oauth2-http:0.15.0'
+
     // Test
         testImplementation 'junit:junit:4.12'
         androidTestImplementation 'com.android.support.test:runner:1.0.2'

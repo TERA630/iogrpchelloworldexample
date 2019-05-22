@@ -9,6 +9,9 @@ import android.os.Binder
 import android.os.Handler
 import android.os.IBinder
 import android.util.Log
+import com.google.auth.Credentials
+import com.google.auth.oauth2.AccessToken
+import com.google.auth.oauth2.GoogleCredentials
 import com.google.cloud.speech.v1.SpeechGrpc
 import io.grpc.*
 import io.grpc.internal.DnsNameResolverProvider

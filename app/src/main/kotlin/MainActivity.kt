@@ -11,7 +11,9 @@ import android.os.IBinder
 import android.os.PersistableBundle
 import android.support.v7.widget.LinearLayoutManager
 import android.util.Log
+import android.view.View
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.item_result.*
 
 const val STATE_RESULTS = "results"
 
@@ -21,8 +23,8 @@ class MainActivity : AppCompatActivity() {
     //  private var mVoiceRecorder:VoiceRecorder? = null
     private lateinit var mSpeechService: SpeechService
 
+    private lateinit var mSpeechServiceListener: SpeechService.Listener
     private lateinit var mServiceConnection: ServiceConnection
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,12 +42,22 @@ class MainActivity : AppCompatActivity() {
         mAdapter = ResultAdapter(result)
         recyclerView.adapter = mAdapter
 
+        mSpeechServiceListener = object:SpeechService.Listener {
+            override fun onSpeechRecognized(text: String, isFinal: Boolean) {
+                recyclerView.smoothScrollToPosition(0)
+            }
+        }
+
         mServiceConnection = object: ServiceConnection{
             override fun onServiceConnected(name: ComponentName?, service: IBinder) {
                 mSpeechService = SpeechService().from(service)
+                mSpeechService.addListener(listener = mSpeechServiceListener)
+
                 Log.i("test","service connected.")
             }
             override fun onServiceDisconnected(name: ComponentName?) {
+                status.visibility = View.VISIBLE
+
                 Log.i("test","service disconnected")
             }
         }
@@ -65,5 +77,6 @@ class MainActivity : AppCompatActivity() {
          val intent = Intent(this, SpeechService::class.java)
          bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE)
      }
+
 
 }

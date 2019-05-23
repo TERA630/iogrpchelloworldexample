@@ -23,19 +23,21 @@ import java.util.jar.Manifest
 const val STATE_RESULTS = "results"
 
 class MainActivity : AppCompatActivity() {
+    
     private val REQUEST_CODE_RECORD = 1
-
-    private lateinit var mAdapter: ResultAdapter
-    private var mVoiceRecorder: VoiceRecorder? = null
-    private var mSpeechService: SpeechService? = null // given after SpeechService begun
-
     private var mColorHearing = 0
     private var mColorNotHearing = 0
+    private var mSpeechService: SpeechService? = null // given after SpeechService begun
+    private var mVoiceRecorder: VoiceRecorder? = null // given after on Start and permission was granted
 
-    private lateinit var mSpeechServiceListener: SpeechService.Listener
-    private lateinit var mServiceConnection: ServiceConnection
-    private lateinit var mVoiceCallback: VoiceRecorder.Callback
 
+    private lateinit var mAdapter: ResultAdapter // initialized by on Create
+    private lateinit var mSpeechServiceListener: SpeechService.Listener // initialized by on Create
+    private lateinit var mServiceConnection: ServiceConnection // initialized by onCreate
+    private lateinit var mVoiceCallback: VoiceRecorder.Callback // initialized by onCreate
+
+
+    // Activity life Cycle
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -51,7 +53,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             arrayListOf("one", "two", "three", "four","five")
         }
-
 
         mSpeechServiceListener = object:SpeechService.Listener {
             override fun onSpeechRecognized(text: String, isFinal: Boolean) {
@@ -123,6 +124,13 @@ class MainActivity : AppCompatActivity() {
 
      }
 
+    override fun onStop() {
+        stopVoiceRecorder()
+        mSpeechService?.let { it.removeLisener(mSpeechServiceListener) }
+        unbindService(mServiceConnection)
+        mSpeechService = null
+    }
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         if (grantResults.isNotEmpty() && grantResults[0] == PERMISSION_GRANTED) {
             // AUDIO RECORD Permission Granted
@@ -135,10 +143,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Private method
     private fun startVoiceRecorder() {
         mVoiceRecorder?.let { it.stop() }
         mVoiceRecorder = VoiceRecorder(mVoiceCallback)
         mVoiceRecorder?.start()
+    }
+
+    private fun stopVoiceRecorder() {
+        mVoiceRecorder?.let {
+            it.stop()
+        }
+        mVoiceRecorder = null
     }
 
     private fun showStatus(hearingVoice: Boolean) {

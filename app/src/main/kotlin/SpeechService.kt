@@ -21,6 +21,7 @@ import java.net.URI
 import java.net.URISyntaxException
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.math.max
 
 class SpeechService : Service() {
     private val TAG = "SpeechService"
@@ -44,6 +45,7 @@ class SpeechService : Service() {
     private var mHandler: Handler? = null
     private var mAccessTokenTask: AccessTokenTask? = null
     private lateinit var mApi: SpeechGrpc.SpeechStub
+    private val mListeners = mutableListOf<Listener>()
 
     override fun onBind(intent: Intent): IBinder {
         return mBinder
@@ -54,21 +56,28 @@ class SpeechService : Service() {
         fetchAccessToken()
     }
 
-    //
-//    override fun onDestroy() {
-//        super.onDestroy()
-//        mHandler?.let{ it.removeCallbacks(mFetchAccessTokenRunnable)}
-//        mHandler = null
-//        // Release gRPC channel
-//        val channel: ManagedChannel = mApi.channel as ManagedChannel
-//        if(channel.isShutdown){
-//            try{
-//                channel.shutdown().awaitTermination(5, TimeUnit.SECONDS)
-//            } catch (e:InterruptedException){
-//                Log.e(TAG, "Error shutting down the gRPC channel. $e")
-//            }
-//        }
-//    }
+    override fun onDestroy() {
+        super.onDestroy()
+        mHandler?.let { it.removeCallbacks(mFetchAccessTokenRunnable) }
+        mHandler = null
+        // Release gRPC channel
+        val channel: ManagedChannel = mApi.channel as ManagedChannel
+        if (channel.isShutdown) {
+            try {
+                channel.shutdown().awaitTermination(5, TimeUnit.SECONDS)
+            } catch (e: InterruptedException) {
+                Log.e(TAG, "Error shutting down the gRPC channel. $e")
+            }
+        }
+    }
+
+    fun addListener(listener: Listener) {
+        mListeners.add(listener)
+    }
+
+    fun removeLisener(listener: Listener) {
+        mListeners.remove(listener)
+    }
     fun from(binder: IBinder): SpeechService {
         return (binder as SpeechBinder).getService()
     }
@@ -78,7 +87,7 @@ class SpeechService : Service() {
         if (mAccessTokenTask != null) {
             return
         } else {
-            mAccessTokenTask = AccessTokenTask() // TokenTaskが開始されていなければ､非同期に暗号鍵をRAW/JSONから作成し､ACCESSTOKENを新しくする｡
+            mAccessTokenTask = AccessTokenTask() // TokenTaskが開始されていなければ､非同期に暗号鍵をRAW/JSONから作成し､ACCESS TOKENを新しくする｡
             mAccessTokenTask!!.execute() //　
         }
     }
@@ -135,12 +144,19 @@ class SpeechService : Service() {
             mApi = SpeechGrpc.newStub(channel)
             mHandler?.postDelayed(
                 mFetchAccessTokenRunnable,
-                java.lang.Long.max(
+                max(
                     result.expirationTime.time - System.currentTimeMillis() - ACCESS_TOKEN_FETCH_MARGIN,
                     ACCESS_TOKEN_EXPIRATION_TOLERANCE.toLong()
                 )
             )
         }
+    }
+
+    interface Listener {
+        // called when a new piece of text was recognized by the CloudSpeechAPI
+        // @param text The text.
+        // @param isFinal when the API finished processing audio.
+        fun onSpeechRecognized(text: String, isFinal: Boolean)
     }
 
     inner class SpeechBinder : Binder() {
@@ -189,7 +205,7 @@ class SpeechService : Service() {
             val authority = channel.authority()
             if (authority == null) {
                 throw Status.UNAUTHENTICATED
-                    .withDescription("Channel has no autority")
+                    .withDescription("Channel has no authority")
                     .asException()
             } else {
                 val scheme = "https"
@@ -246,4 +262,5 @@ class SpeechService : Service() {
             return headers
         }
     }
+
 }

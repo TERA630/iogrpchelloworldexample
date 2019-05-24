@@ -23,7 +23,7 @@ import java.util.jar.Manifest
 const val STATE_RESULTS = "results"
 
 class MainActivity : AppCompatActivity() {
-    
+
     private val REQUEST_CODE_RECORD = 1
     private var mColorHearing = 0
     private var mColorNotHearing = 0
@@ -38,7 +38,7 @@ class MainActivity : AppCompatActivity() {
 
 
     // Activity life Cycle
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(savedInstanceState: Bundle?) { // called first
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -97,12 +97,8 @@ class MainActivity : AppCompatActivity() {
         recyclerView.adapter = mAdapter
     }
 
-    override fun onSaveInstanceState(outState: Bundle?, outPersistentState: PersistableBundle?) {
-        super.onSaveInstanceState(outState, outPersistentState)
-        outState?.putStringArrayList(STATE_RESULTS, mAdapter.getResults())
-    }
 
-    override fun onStart() {
+    override fun onStart() { // called after onCreate or onRestart
         super.onStart()
         // Prepare Cloud Speech API
         val intent = Intent(this, SpeechService::class.java)
@@ -129,6 +125,16 @@ class MainActivity : AppCompatActivity() {
         mSpeechService?.let { it.removeLisener(mSpeechServiceListener) }
         unbindService(mServiceConnection)
         mSpeechService = null
+        super.onStop()
+    }
+
+    // on Activity Event
+    override fun onSaveInstanceState(
+        outState: Bundle?,
+        outPersistentState: PersistableBundle?
+    ) { // Rotate or process kill
+        super.onSaveInstanceState(outState, outPersistentState)
+        outState?.putStringArrayList(STATE_RESULTS, mAdapter.getResults())
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -142,7 +148,6 @@ class MainActivity : AppCompatActivity() {
             Log.w("test", "permission was refused by request")
         }
     }
-
     // Private method
     private fun startVoiceRecorder() {
         mVoiceRecorder?.let { it.stop() }

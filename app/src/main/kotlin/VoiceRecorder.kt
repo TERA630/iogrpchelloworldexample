@@ -9,7 +9,7 @@ import java.util.*
 import kotlin.concurrent.thread
 import kotlin.concurrent.withLock
 
-class VoiceRecorder(private val mCallback: VoiceRecorder.Callback) {
+class VoiceRecorder(private val mCallback: Callback) {
     private val SAMPLE_RATE_CANDIDATES = intArrayOf(16000, 11025, 22050, 44100)
     private val CHANNEL = AudioFormat.CHANNEL_IN_MONO
     private val ENCODING = AudioFormat.ENCODING_PCM_16BIT
@@ -44,8 +44,12 @@ class VoiceRecorder(private val mCallback: VoiceRecorder.Callback) {
         stop() // if it is current ongoing, stop it.
         mAudioRecord = createAudioRecord() ?: throw java.lang.RuntimeException("Cannot instantiate VoiceRecorder")
         Log.i("test", "voice recorder started..")
-        //   mThread = Thread(ProcessVoice())
-        //   mThread!!.start()
+
+        // Process Voice
+        
+
+        mThread = Thread(ProcessVoice())
+        mThread!!.start()
     }
 
     fun stop() {
@@ -101,11 +105,11 @@ class VoiceRecorder(private val mCallback: VoiceRecorder.Callback) {
 
     inner class ProcessVoice : Runnable {
         override fun run() {
-            while (true) {
+            while (true) loop@ {
                 mLock.withLock {
                     if (Thread.currentThread().isInterrupted) {
-                    } else {
-                        mAudioRecord?.let {
+                    }
+                    mAudioRecord?.let {
                             val size = it.read(mBuffer, 0, mBuffer.size)
                             val now = System.currentTimeMillis()
                             if (isHearingVoice(mBuffer, size)) {
@@ -128,7 +132,6 @@ class VoiceRecorder(private val mCallback: VoiceRecorder.Callback) {
                 }
             }
         }
-    }
 
     private fun end() {
         mLastVoiceHeardMillis = Long.MAX_VALUE

@@ -7,10 +7,8 @@ import android.os.IBinder
 import android.os.PersistableBundle
 import android.Manifest.permission
 import android.content.*
-import android.content.pm.PackageManager
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.support.v4.app.ActivityCompat
-import android.support.v4.content.ContextCompat
 import android.support.v4.content.ContextCompat.checkSelfPermission
 import android.support.v7.app.AlertDialog
 import android.support.v7.widget.LinearLayoutManager
@@ -18,7 +16,6 @@ import android.util.Log
 import android.view.View
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_result.*
-import java.util.jar.Manifest
 
 const val STATE_RESULTS = "results"
 
@@ -37,7 +34,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mVoiceCallback: VoiceRecorder.Callback // initialized by onCreate
 
 
-    // Activity life Cycle
+    // Activity main life Cycle
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -56,7 +53,17 @@ class MainActivity : AppCompatActivity() {
 
         mSpeechServiceListener = object:SpeechService.Listener {
             override fun onSpeechRecognized(text: String, isFinal: Boolean) {
-                recyclerView.smoothScrollToPosition(0)
+                if(isFinal) mVoiceRecorder?.dismiss()
+                if( text.isNotEmpty()) {
+                    runOnUiThread {
+                        if(isFinal) {
+                            conditionLabel.text = ""
+                            mAdapter.addResult(text)
+                            recyclerView.smoothScrollToPosition(0)
+                        }
+                        else conditionLabel.text = text
+                    }
+                }
             }
         }
 
@@ -73,7 +80,7 @@ class MainActivity : AppCompatActivity() {
                 Log.i("test","service disconnected")
             }
         }
-        mVoiceCallback = object : VoiceRecorder.Callback {
+        mVoiceCallback = object : VoiceRecorder.Callback { // 音声認識エンジン
             override fun onVoiceStart() {
                 showStatus(true)
                 Log.i("test", "voice coming")
@@ -96,12 +103,6 @@ class MainActivity : AppCompatActivity() {
         mAdapter = ResultAdapter(result)
         recyclerView.adapter = mAdapter
     }
-
-    override fun onSaveInstanceState(outState: Bundle?, outPersistentState: PersistableBundle?) {
-        super.onSaveInstanceState(outState, outPersistentState)
-        outState?.putStringArrayList(STATE_RESULTS, mAdapter.getResults())
-    }
-
     override fun onStart() {
         super.onStart()
         // Prepare Cloud Speech API
@@ -122,15 +123,26 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(this, arrayOf(permission.RECORD_AUDIO), REQUEST_CODE_RECORD)
         }
 
-     }
+    }
 
     override fun onStop() {
         stopVoiceRecorder()
-        mSpeechService?.let { it.removeLisener(mSpeechServiceListener) }
+        mSpeechService?.let { it.removeListener(mSpeechServiceListener) }
         unbindService(mServiceConnection)
         mSpeechService = null
+        super.onStop()
+    }
+    override fun onSaveInstanceState(outState: Bundle?, outPersistentState: PersistableBundle?) { // on Pauseや回転後 on Stop前
+        super.onSaveInstanceState(outState, outPersistentState)
+        outState?.putStringArrayList(STATE_RESULTS, mAdapter.getResults())
+    }
+    override fun onRestoreInstanceState(savedInstanceState: Bundle?) {
+        super.onRestoreInstanceState(savedInstanceState)
+        val stringArray = savedInstanceState?.getStringArrayList(STATE_RESULTS)
+        if(!stringArray.isNullOrEmpty()) mAdapter.upDateResultList(stringArray)
     }
 
+    // Activity Event
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         if (grantResults.isNotEmpty() && grantResults[0] == PERMISSION_GRANTED) {
             // AUDIO RECORD Permission Granted
@@ -138,8 +150,10 @@ class MainActivity : AppCompatActivity() {
             startVoiceRecorder()
         } else if (shouldShowRequestPermissionRationale(permission.RECORD_AUDIO)) {
             Log.w("test", "permission request was disabled")
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         } else {
             Log.w("test", "permission was refused by request")
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         }
     }
 

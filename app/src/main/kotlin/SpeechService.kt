@@ -13,9 +13,11 @@ import com.google.auth.Credentials
 import com.google.auth.oauth2.AccessToken
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.cloud.speech.v1.SpeechGrpc
+import com.google.cloud.speech.v1.StreamingRecognizeResponse
 import io.grpc.*
 import io.grpc.internal.DnsNameResolverProvider
 import io.grpc.okhttp.OkHttpChannelProvider
+import io.grpc.stub.StreamObserver
 import java.io.IOException
 import java.net.URI
 import java.net.URISyntaxException
@@ -44,18 +46,54 @@ class SpeechService : Service() {
     private val mBinder: SpeechBinder = SpeechBinder()
     private var mHandler: Handler? = null
     private var mAccessTokenTask: AccessTokenTask? = null
-    private lateinit var mApi: SpeechGrpc.SpeechStub
     private val mListeners = mutableListOf<Listener>()
 
-    override fun onBind(intent: Intent): IBinder {
-        return mBinder
-    }
+    //
+    private lateinit var mApi: SpeechGrpc.SpeechStub
+    private lateinit var mResponseObserver:StreamObserver<StreamingRecognizeResponse>
+
+
+
+    // Service lifecycle
     override fun onCreate() {
         super.onCreate()
         mHandler = Handler()
         fetchAccessToken()
-    }
+        mResponseObserver = object:StreamObserver<StreamingRecognizeResponse>{
+            override fun onNext(response: StreamingRecognizeResponse?) {
+                var text:String? = null
+                var isFinal = false
+                response?.let{
+                    if(it.resultsCount > 0) {
+                        val result = it.getResults(0)
+                        isFinal = result.isFinal
+                        if(result.alternativesCount>0){
+                            val alternative = result.getAlternatives(0)
+                            text = alternative.transcript
+                        }
+                    }
+                    if(text != null){
+                        for(listener in mListeners){
+                           listener.onSpeechRecognized(text,isFinal)
+                        }
 
+                    }
+                }
+
+                TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+            }
+            override fun onCompleted() {
+                TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+            }
+            override fun onError(t: Throwable?) {
+                TODO()
+            }
+        }
+
+    }
+    override fun onBind(intent: Intent): IBinder {
+        return mBinder
+    }
     override fun onDestroy() {
         super.onDestroy()
         mHandler?.let { it.removeCallbacks(mFetchAccessTokenRunnable) }
@@ -75,7 +113,7 @@ class SpeechService : Service() {
         mListeners.add(listener)
     }
 
-    fun removeLisener(listener: Listener) {
+    fun removeListener(listener: Listener) {
         mListeners.remove(listener)
     }
     fun from(binder: IBinder): SpeechService {
@@ -91,11 +129,28 @@ class SpeechService : Service() {
             mAccessTokenTask!!.execute() //　
         }
     }
+    fun getDefaultLanguageCode():String{
+        val local = Locale.getDefault()
+        val language = StringBuilder(local.language)
+        val country = local.country
+        if(country.isNotEmpty()) {
+            language.append("-")
+            language.append(country)
+        }
+        return language.toString()
+    }
 
     val mFetchAccessTokenRunnable = object : Runnable {
         override fun run() {
             fetchAccessToken()
         }
+    }
+    fun startRecognizing(sampleRate:Int){
+        if(mApi == null){
+            Log.w(TAG,"API not ready. Ignoring the request")
+            return
+        }
+        val mRequestObserver = mApi.streamingRecognize(mResponseObserver)
     }
 
     private inner class AccessTokenTask : AsyncTask<Void, Void, AccessToken>() {

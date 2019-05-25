@@ -31,7 +31,7 @@ class VoiceRecorder(private val mCallback: VoiceRecorder.Callback) {
 
     private var mAudioRecord: AudioRecord? = null
     private var mThread: Thread? = null
-    private var mBuffer: ByteArray? = null
+    private lateinit var mBuffer: ByteArray
     private var mLock = java.util.concurrent.locks.ReentrantLock()
 
 
@@ -60,8 +60,7 @@ class VoiceRecorder(private val mCallback: VoiceRecorder.Callback) {
                 it.release()
                 mAudioRecord = null
             }
-            mBuffer = null
-        } * /
+        }
     }
 
     fun dismiss() {
@@ -106,21 +105,23 @@ class VoiceRecorder(private val mCallback: VoiceRecorder.Callback) {
                 mLock.withLock {
                     if (Thread.currentThread().isInterrupted) {
                     } else {
-                        val size = mAudioRecord.read(mBuffer, 0, mBuffer.size)
-                        val now = System.currentTimeMillis()
-                        if (isHearingVoice(mBuffer, size)) {
-                            if (mLastVoiceHeardMillis == Long.MAX_VALUE) {
-                                mVoiceStartedMillis = now
-                                mCallback.onVoiceStart()
-                            }
-                            mCallback.onVoice(mBuffer, size)
-                            if (now - mVoiceStartedMillis > MAX_SPEECH_LENGTH_MILLIS) {
-                                end()
-                            }
-                        } else if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
-                            mCallback.onVoice(mBuffer, size)
+                        mAudioRecord?.let {
+                            val size = it.read(mBuffer, 0, mBuffer.size)
+                            val now = System.currentTimeMillis()
+                            if (isHearingVoice(mBuffer, size)) {
+                                if (mLastVoiceHeardMillis == Long.MAX_VALUE) {
+                                    mVoiceStartedMillis = now
+                                    mCallback.onVoiceStart()
+                                }
+                                mCallback.onVoice(mBuffer, size)
+                                if (now - mVoiceStartedMillis > MAX_SPEECH_LENGTH_MILLIS) {
+                                    end()
+                                } else if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
+                                    mCallback.onVoice(mBuffer, size)
+                                }
                             if (now - mVoiceStartedMillis > SPEECH_TIMEOUT_MILLIS) {
                                 end()
+                            }
                             }
                         }
                     }

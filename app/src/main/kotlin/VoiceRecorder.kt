@@ -75,10 +75,11 @@ class VoiceRecorder(private val mCallback: Callback) {
     }
     // Retries the sample rate currently used to record audio
 
-    fun getSampleRate() {
-        val result = mAudioRecord?.let {
-            it.sampleRate
-        } ?: 0
+    fun getSampleRate(): Int {
+        if (mAudioRecord != null) {
+            val result = mAudioRecord?.sampleRate ?: 0
+            return result
+        } else return 0
     }
 
     private fun createAudioRecord(): AudioRecord? {

@@ -42,14 +42,14 @@ class VoiceRecorder(private val mCallback: Callback) {
 
     fun start() {
         stop() // if it is current ongoing, stop it.
-        mAudioRecord = createAudioRecord() ?: throw java.lang.RuntimeException("Cannot instantiate VoiceRecorder")
-        Log.i("test", "voice recorder started..")
-
-        // Process Voice
-        
-
-        mThread = Thread(ProcessVoice())
-        mThread!!.start()
+        mAudioRecord = createAudioRecord()
+        if (mAudioRecord == null) throw java.lang.RuntimeException("Cannot instantiate VoiceRecorder")
+        else {
+            Log.i("test", "voice recorder started..")
+            mAudioRecord?.startRecording()
+            mThread = Thread(ProcessVoice())
+            mThread!!.start()
+        }
     }
 
     fun stop() {
@@ -105,10 +105,12 @@ class VoiceRecorder(private val mCallback: Callback) {
 
     inner class ProcessVoice : Runnable {
         override fun run() {
-            while (true) loop@ {
+            runLoop@ while (true) {
+                if (Thread.currentThread().isInterrupted) {
+                    Log.w("test", "thread interrupted")
+                    break@runLoop
+                }
                 mLock.withLock {
-                    if (Thread.currentThread().isInterrupted) {
-                    }
                     mAudioRecord?.let {
                             val size = it.read(mBuffer, 0, mBuffer.size)
                             val now = System.currentTimeMillis()

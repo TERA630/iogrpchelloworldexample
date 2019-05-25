@@ -18,6 +18,8 @@ import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_result.*
 
 const val STATE_RESULTS = "results"
+const val COLOR_HEARING = "colorHearing"
+const val COLOR_NOT_HEARING = "colorNotHearing"
 
 class MainActivity : AppCompatActivity() {
     
@@ -124,7 +126,6 @@ class MainActivity : AppCompatActivity() {
         }
 
     }
-
     override fun onStop() {
         stopVoiceRecorder()
         mSpeechService?.let { it.removeListener(mSpeechServiceListener) }
@@ -134,7 +135,12 @@ class MainActivity : AppCompatActivity() {
     }
     override fun onSaveInstanceState(outState: Bundle?, outPersistentState: PersistableBundle?) { // on Pauseや回転後 on Stop前
         super.onSaveInstanceState(outState, outPersistentState)
-        outState?.putStringArrayList(STATE_RESULTS, mAdapter.getResults())
+        outState?.apply {
+            putStringArrayList(STATE_RESULTS, mAdapter.getResults())
+            putInt(COLOR_HEARING, mColorHearing)
+            putInt(COLOR_NOT_HEARING, mColorNotHearing)
+        }
+
     }
     override fun onRestoreInstanceState(savedInstanceState: Bundle?) {
         super.onRestoreInstanceState(savedInstanceState)

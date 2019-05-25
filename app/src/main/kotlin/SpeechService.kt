@@ -12,6 +12,7 @@ import android.util.Log
 import com.google.auth.Credentials
 import com.google.auth.oauth2.AccessToken
 import com.google.auth.oauth2.GoogleCredentials
+import com.google.cloud.speech.v1.RecognizeResponse
 import com.google.cloud.speech.v1.SpeechGrpc
 import com.google.cloud.speech.v1.StreamingRecognizeResponse
 import io.grpc.*
@@ -50,9 +51,8 @@ class SpeechService : Service() {
 
     //
     private lateinit var mApi: SpeechGrpc.SpeechStub
+    private lateinit var mFileResponseObserver: StreamObserver<RecognizeResponse>
     private lateinit var mResponseObserver:StreamObserver<StreamingRecognizeResponse>
-
-
 
     // Service lifecycle
     override fun onCreate() {
@@ -61,7 +61,7 @@ class SpeechService : Service() {
         fetchAccessToken()
         mResponseObserver = object:StreamObserver<StreamingRecognizeResponse>{
             override fun onNext(response: StreamingRecognizeResponse?) {
-                var text:String? = null
+                var text: String = ""
                 var isFinal = false
                 response?.let{
                     if(it.resultsCount > 0) {
@@ -72,8 +72,8 @@ class SpeechService : Service() {
                             text = alternative.transcript
                         }
                     }
-                    if(text != null){
-                        for(listener in mListeners){
+                    if (text.isNotEmpty()) {
+                        for (listener in mListeners) {
                            listener.onSpeechRecognized(text,isFinal)
                         }
 
@@ -83,12 +83,44 @@ class SpeechService : Service() {
                 TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
             }
             override fun onCompleted() {
-                TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+                Log.i(TAG, "API completed.")
             }
+
             override fun onError(t: Throwable?) {
-                TODO()
+                Log.e(TAG, "Error calling the API.", t)
             }
         }
+        mFileResponseObserver = object : StreamObserver<RecognizeResponse> {
+            override fun onNext(response: RecognizeResponse?) {
+                val isFinal = false
+                var text = ""
+                response?.let {
+                    if (response.resultsCount > 0) {
+                        val result = response.getResults(0)
+                        if (result.alternativesCount > 0) {
+                            val alternative = result.getAlternatives(0)
+                            text = alternative.transcript
+                        }
+
+                    }
+                }
+                if (text.isNotEmpty()) {
+                    for (listener in mListeners) {
+                        listener.onSpeechRecognized(text, isFinal)
+                    }
+
+                }
+            }
+
+            override fun onCompleted() {
+                Log.i(TAG, "API completed.")
+            }
+
+            override fun onError(t: Throwable?) {
+                Log.e(TAG, "Error calling the API.", t)
+            }
+        }
+
 
     }
     override fun onBind(intent: Intent): IBinder {

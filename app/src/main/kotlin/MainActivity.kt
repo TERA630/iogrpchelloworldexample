@@ -93,8 +93,8 @@ class MainActivity : AppCompatActivity() {
                 super.onVoice(data, size)
                 Log.i("test", "voice continues.")
             }
-
             override fun onVoiceEnd() {
+                showStatus(false)
                 super.onVoiceEnd()
                 Log.i("test", "voice ended")
             }

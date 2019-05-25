@@ -62,8 +62,8 @@ class VoiceRecorder(private val mCallback: Callback) {
             mAudioRecord?.let {
                 it.stop()
                 it.release()
-                mAudioRecord = null
             }
+            mAudioRecord = null
         }
     }
 
@@ -115,41 +115,37 @@ class VoiceRecorder(private val mCallback: Callback) {
                             val size = it.read(mBuffer, 0, mBuffer.size)
                             val now = System.currentTimeMillis()
                             if (isHearingVoice(mBuffer, size)) {
-                                if (mLastVoiceHeardMillis == Long.MAX_VALUE) {
+                                if (mLastVoiceHeardMillis == Long.MAX_VALUE) { // ボイスレコーダー開始時にmLast..はMAX_VALUEに､mVoiceStart..は今に
                                     mVoiceStartedMillis = now
                                     mCallback.onVoiceStart()
                                 }
                                 mCallback.onVoice(mBuffer, size)
-                                if (now - mVoiceStartedMillis > MAX_SPEECH_LENGTH_MILLIS) {
-                                    end()
+                                mLastVoiceHeardMillis = now
+                                if (now - mVoiceStartedMillis > MAX_SPEECH_LENGTH_MILLIS) end() // 経過30秒で終わり
                                 } else if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
                                     mCallback.onVoice(mBuffer, size)
-                                }
-                            if (now - mVoiceStartedMillis > SPEECH_TIMEOUT_MILLIS) {
-                                end()
+                                if (now - mVoiceStartedMillis > SPEECH_TIMEOUT_MILLIS) end() // 無音は2秒でタイムアウト
                             }
-                            }
-                        }
                     }
+
                 }
             }
         }
 
-    private fun end() {
-        mLastVoiceHeardMillis = Long.MAX_VALUE
-        mCallback.onVoiceEnd()
-    }
-
-    private fun isHearingVoice(buffer: ByteArray, size: Int): Boolean {
-        for (i in 0 until size - 1 step 2) {
-            var s = buffer[i + 1].toInt() // Little endian  上位バイト
-            if (s < 0) s *= -1 // 負数なら正数に
-            s = s shl 8 // 上位バイト　
-            s += Math.abs(buffer[i].toInt()) //　下位バイト
-            if (s > AMPLITUDE_THRESHOLD) {
-                return true
-            }
+        private fun end() {
+            mLastVoiceHeardMillis = Long.MAX_VALUE
+            mCallback.onVoiceEnd()
         }
-        return false
+
+        private fun isHearingVoice(buffer: ByteArray, size: Int): Boolean {
+            for (i in 0 until size - 1 step 2) {
+                var s = buffer[i + 1].toInt() // Little endian  上位バイト
+                if (s < 0) s *= -1 // 負数なら正数に
+                s = s shl 8 // 上位バイト　
+                s += Math.abs(buffer[i].toInt()) //　下位バイト
+                if (s > AMPLITUDE_THRESHOLD) return true
+            }
+            return false
+        }
     }
 }

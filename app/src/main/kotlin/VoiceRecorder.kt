@@ -4,6 +4,7 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.provider.MediaStore
+import android.util.Log
 import java.util.*
 import kotlin.concurrent.thread
 import kotlin.concurrent.withLock
@@ -23,12 +24,14 @@ class VoiceRecorder(private val mCallback: VoiceRecorder.Callback) {
             // @param data: The audio data in AudioFormat#ENCORDING_PCM_16BIT
             // @param size: The size of actual data in
         }
+
         fun onVoiceEnd() {} // called when the recorder stops hearing voice.
+
     }
 
     private var mAudioRecord: AudioRecord? = null
     private var mThread: Thread? = null
-    private lateinit var mBuffer: ByteArray
+    private var mBuffer: ByteArray? = null
     private var mLock = java.util.concurrent.locks.ReentrantLock()
 
 
@@ -40,8 +43,9 @@ class VoiceRecorder(private val mCallback: VoiceRecorder.Callback) {
     fun start() {
         stop() // if it is current ongoing, stop it.
         mAudioRecord = createAudioRecord() ?: throw java.lang.RuntimeException("Cannot instantiate VoiceRecorder")
-        mThread = Thread(ProcessVoice())
-        mThread!!.start()
+        Log.i("test", "voice recorder started..")
+        //   mThread = Thread(ProcessVoice())
+        //   mThread!!.start()
     }
 
     fun stop() {
@@ -56,8 +60,8 @@ class VoiceRecorder(private val mCallback: VoiceRecorder.Callback) {
                 it.release()
                 mAudioRecord = null
             }
-        }
-
+            mBuffer = null
+        } * /
     }
 
     fun dismiss() {

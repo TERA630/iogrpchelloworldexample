@@ -8,13 +8,17 @@ import com.example.gRPCTest.R
 import kotlinx.android.synthetic.main.item_result.view.*
 import java.util.ArrayList
 
-class ResultAdapter(private val mResults: ArrayList<String>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class ResultAdapter(private var mResults: ArrayList<String>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     fun addResult(result: String) {
         mResults.add(0, result)
         notifyItemInserted(0)
     }
 
+    fun upDateResultList(stringArray: ArrayList<String>) {
+        mResults = stringArray
+        notifyDataSetChanged()
+    }
     override fun getItemCount(): Int = mResults.size
     fun getResults(): ArrayList<String> = mResults
 

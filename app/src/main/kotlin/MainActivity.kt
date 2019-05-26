@@ -14,10 +14,8 @@ import android.support.v7.app.AlertDialog
 import android.support.v7.widget.LinearLayoutManager
 import android.util.Log
 import android.view.View
-import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_result.*
-import java.util.jar.Manifest
 
 const val STATE_RESULTS = "results"
 const val COLOR_HEARING = "colorHearing"
@@ -96,11 +94,11 @@ class MainActivity : AppCompatActivity() {
             override fun onVoice(data: ByteArray, size: Int) {
                 super.onVoice(data, size)
                 Log.i("test", "voice continues.")
-                mSpeechService?.let {}
+                mSpeechService?.let { it.recognize(data, size) }
             }
             override fun onVoiceEnd() {
                 showStatus(false)
-                super.onVoiceEnd()
+                mSpeechService?.finishRecognizing()
                 Log.i("test", "voice ended")
             }
         }

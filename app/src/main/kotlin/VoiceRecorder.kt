@@ -106,11 +106,7 @@ class VoiceRecorder(private val mCallback: Callback) {
 
     inner class ProcessVoice : Runnable {
         override fun run() {
-            runLoop@ while (true) {
-                if (Thread.currentThread().isInterrupted) {
-                    Log.w("test", "thread interrupted")
-                    break@runLoop
-                }
+            runLoop@ while (!Thread.currentThread().isInterrupted) {
                 mLock.withLock {
                     mAudioRecord?.let {
                             val size = it.read(mBuffer, 0, mBuffer.size)

@@ -12,9 +12,8 @@ import android.util.Log
 import com.google.auth.Credentials
 import com.google.auth.oauth2.AccessToken
 import com.google.auth.oauth2.GoogleCredentials
-import com.google.cloud.speech.v1.RecognizeResponse
-import com.google.cloud.speech.v1.SpeechGrpc
-import com.google.cloud.speech.v1.StreamingRecognizeResponse
+import com.google.cloud.speech.v1.*
+import com.google.protobuf.ByteString
 import io.grpc.*
 import io.grpc.internal.DnsNameResolverProvider
 import io.grpc.okhttp.OkHttpChannelProvider
@@ -53,6 +52,7 @@ class SpeechService : Service() {
     private lateinit var mApi: SpeechGrpc.SpeechStub
     private lateinit var mFileResponseObserver: StreamObserver<RecognizeResponse>
     private lateinit var mResponseObserver: StreamObserver<StreamingRecognizeResponse>
+    private var mRequestObserver: StreamObserver<StreamingRecognizeRequest>? = null
 
     // Service lifecycle
     override fun onCreate() {
@@ -185,8 +185,39 @@ class SpeechService : Service() {
         if (mApi == null) {
             Log.w(TAG, "API not ready. Ignoring the request")
             return
+        } else {
+            mRequestObserver = mApi.streamingRecognize(mResponseObserver)
+            val recognitionConfig = RecognitionConfig.newBuilder()
+                .setLanguageCode(getDefaultLanguageCode())
+                .setEncoding(RecognitionConfig.AudioEncoding.LINEAR16)
+                .setSampleRateHertz(sampleRate)
+                .build()
+            val streamingRecognitionConfig = StreamingRecognitionConfig.newBuilder()
+                .setConfig(recognitionConfig)
+                .setInterimResults(true)
+                .setSingleUtterance(true)
+                .build()
+            val streamingRecognizeRequest = StreamingRecognizeRequest.newBuilder()
+                .setStreamingConfig(streamingRecognitionConfig)
+                .build()
+            mRequestObserver?.onNext(streamingRecognizeRequest)
         }
-        val mRequestObserver = mApi.streamingRecognize(mResponseObserver)
+    }
+
+    fun recognize(data: ByteArray, size: Int) {
+        val streamingRecognizeRequest = StreamingRecognizeRequest.newBuilder()
+            .setAudioContent(ByteString.copyFrom(data, 0, size))
+            .build()
+        mRequestObserver?.let {
+            it.onNext(streamingRecognizeRequest)
+        }
+    }
+
+    fun finishRecognizing() {
+        mRequestObserver?.let {
+            it.onCompleted()
+            mRequestObserver = null
+        }
     }
 
     private inner class AccessTokenTask : AsyncTask<Void, Void, AccessToken>() {

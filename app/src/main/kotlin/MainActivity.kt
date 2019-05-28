@@ -85,7 +85,7 @@ class MainActivity : AppCompatActivity() {
             override fun onVoiceStart() {
                 showStatus(true)
                 Log.i("test", "voice coming")
-                val sampleRate = mVoiceRecorder?.let { it.getSampleRate() }
+                val sampleRate = mVoiceRecorder?.getSampleRate()
                 if (sampleRate != null && sampleRate != 0) {
                     mSpeechService?.startRecognizing(sampleRate)
                 }

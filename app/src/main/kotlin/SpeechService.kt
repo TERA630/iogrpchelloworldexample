@@ -61,7 +61,7 @@ class SpeechService : Service() {
         fetchAccessToken()
         mResponseObserver = object : StreamObserver<StreamingRecognizeResponse> {
             override fun onNext(response: StreamingRecognizeResponse?) {
-                var text: String = ""
+                var text = ""
                 var isFinal = false
                 response?.let {
                     if (it.resultsCount > 0) {
@@ -128,7 +128,7 @@ class SpeechService : Service() {
     }
     override fun onDestroy() {
         super.onDestroy()
-        mHandler?.let { it.removeCallbacks(mFetchAccessTokenRunnable) }
+        mHandler?.removeCallbacks(mFetchAccessTokenRunnable)
         mHandler = null
         // Release gRPC channel
         val channel: ManagedChannel = mApi.channel as ManagedChannel
@@ -162,7 +162,7 @@ class SpeechService : Service() {
         }
     }
 
-    fun getDefaultLanguageCode(): String {
+    private fun getDefaultLanguageCode(): String {
         val local = Locale.getDefault()
         val language = StringBuilder(local.language)
         val country = local.country
@@ -173,11 +173,7 @@ class SpeechService : Service() {
         return language.toString()
     }
 
-    val mFetchAccessTokenRunnable = object : Runnable {
-        override fun run() {
-            fetchAccessToken()
-        }
-    }
+    val mFetchAccessTokenRunnable = Runnable { fetchAccessToken() }
 
     fun startRecognizing(sampleRate: Int) {
         if (mApi == null) {
@@ -186,7 +182,7 @@ class SpeechService : Service() {
         } else {
             mRequestObserver = mApi.streamingRecognize(mResponseObserver)
             val recognitionConfig = RecognitionConfig.newBuilder()
-                .setLanguageCode(getDefaultLanguageCode())
+                .setLanguageCode("ja-JP")
                 .setEncoding(RecognitionConfig.AudioEncoding.LINEAR16)
                 .setSampleRateHertz(sampleRate)
                 .build()

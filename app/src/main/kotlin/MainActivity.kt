@@ -38,15 +38,13 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        val linearLayoutManager = LinearLayoutManager(this.baseContext)
         mColorHearing = getColor(R.color.status_hearing)
         mColorNotHearing = getColor(R.color.status_not_hearing)
 
         val resultOptional = savedInstanceState?.getStringArrayList(STATE_RESULTS)
-        val result = if (resultOptional.isNullOrEmpty()) resultOptional as ArrayList<String>
-        else arrayListOf("one", "two", "three", "four", "five")
-        InstantiateSpeechDealers()
+        val result = if (resultOptional.isNullOrEmpty()) arrayListOf("one", "two", "three", "four", "five")
+        else resultOptional
+        instantiateSpeechDealers()
         mAdapter = ResultAdapter(result)
         recyclerView.adapter = mAdapter
     }
@@ -103,7 +101,6 @@ class MainActivity : AppCompatActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         if (grantResults.isNotEmpty() && grantResults[0] == PERMISSION_GRANTED) {
             // AUDIO RECORD Permission Granted
-            Log.i("test", "permission was granted by request")
             startVoiceRecorder()
         } else if (shouldShowRequestPermissionRationale(permission.RECORD_AUDIO)) {
             Log.w("test", "permission request was disabled")
@@ -113,9 +110,8 @@ class MainActivity : AppCompatActivity() {
             super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         }
     }
-
     // Private method
-    private fun InstantiateSpeechDealers() {
+    private fun instantiateSpeechDealers() {
         mSpeechServiceListener = object : SpeechService.Listener {
             override fun onSpeechRecognized(text: String, isFinal: Boolean) {
                 if (isFinal) mVoiceRecorder?.dismiss()
@@ -134,37 +130,30 @@ class MainActivity : AppCompatActivity() {
             override fun onServiceConnected(name: ComponentName?, service: IBinder) {
                 mSpeechService = SpeechService().from(service)
                 mSpeechService?.addListener(listener = mSpeechServiceListener)
-                Log.i("test", "service connected.")
                 status.visibility = View.VISIBLE
             }
-
             override fun onServiceDisconnected(name: ComponentName?) {
                 mSpeechService = null
-                Log.i("test", "service disconnected")
             }
         }
         mVoiceCallback = object : VoiceRecorder.Callback { // 音声認識エンジン
             override fun onVoiceStart() {
                 showStatus(true)
-                Log.i("test", "voice coming")
                 val sampleRate = mVoiceRecorder?.getSampleRate()
                 if (sampleRate != null && sampleRate != 0) {
                     mSpeechService?.startRecognizing(sampleRate)
                 }
             }
-
             override fun onVoice(data: ByteArray, size: Int) {
                 super.onVoice(data, size)
                 mSpeechService?.recognize(data, size)
             }
-
             override fun onVoiceEnd() {
                 showStatus(false)
                 mSpeechService?.finishRecognizing()
             }
         }
     }
-
 
     private fun startVoiceRecorder() {
         mVoiceRecorder?.stop()

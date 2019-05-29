@@ -29,12 +29,10 @@ class MainActivity : AppCompatActivity() {
     private var mSpeechService: SpeechService? = null // given after SpeechService begun
     private var mVoiceRecorder: VoiceRecorder? = null // given after on Start and permission was granted
 
-
     private lateinit var mAdapter: ResultAdapter // initialized by on Create
     private lateinit var mSpeechServiceListener: SpeechService.Listener // initialized by on Create
     private lateinit var mServiceConnection: ServiceConnection // initialized by onCreate
     private lateinit var mVoiceCallback: VoiceRecorder.Callback // initialized by onCreate
-
 
     // Activity life Cycle
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,68 +42,11 @@ class MainActivity : AppCompatActivity() {
         val linearLayoutManager = LinearLayoutManager(this.baseContext)
         mColorHearing = getColor(R.color.status_hearing)
         mColorNotHearing = getColor(R.color.status_not_hearing)
-        recyclerView.layoutManager = linearLayoutManager
 
-
-        val result = if (savedInstanceState != null) {
-            savedInstanceState.getStringArrayList(STATE_RESULTS) ?: arrayListOf("fail to get savedInstance..")
-        } else {
-            arrayListOf("one", "two", "three", "four","five")
-        }
-
-        mSpeechServiceListener = object:SpeechService.Listener {
-            override fun onSpeechRecognized(text: String, isFinal: Boolean) {
-                if (isFinal) mVoiceRecorder?.dismiss()
-                if (text.isNotEmpty()) {
-                    runOnUiThread {
-                        if (isFinal) {
-                            conditionLabel.text = ""
-                            mAdapter.addResult(text)
-                            recyclerView.smoothScrollToPosition(0)
-                        } else conditionLabel.text = text
-                    }
-                }
-            }
-        }
-
-        mServiceConnection = object: ServiceConnection{
-            override fun onServiceConnected(name: ComponentName?, service: IBinder) {
-                mSpeechService = SpeechService().from(service)
-                mSpeechService?.addListener(listener = mSpeechServiceListener)
-                Log.i("test","service connected.")
-                status.visibility = View.VISIBLE
-            }
-
-            override fun onServiceDisconnected(name: ComponentName?) {
-                mSpeechService = null
-                Log.i("test","service disconnected")
-            }
-        }
-        mVoiceCallback = object : VoiceRecorder.Callback { // 音声認識エンジン
-            override fun onVoiceStart() {
-                showStatus(true)
-                Log.i("test", "voice coming")
-                val sampleRate = mVoiceRecorder?.getSampleRate()
-                if (sampleRate != null && sampleRate != 0) {
-                    mSpeechService?.startRecognizing(sampleRate)
-                }
-            }
-
-            override fun onVoice(data: ByteArray, size: Int) {
-                super.onVoice(data, size)
-                Log.i("test", "voice continues.")
-                mSpeechService?.let { it.recognize(data, size) }
-            }
-            override fun onVoiceEnd() {
-                showStatus(false)
-                mSpeechService?.finishRecognizing()
-                Log.i("test", "voice ended")
-            }
-        }
-        startRecordingBtn.setOnClickListener {
-            Log.i("test", "button was pushed.")
-        }
-
+        val resultOptional = savedInstanceState?.getStringArrayList(STATE_RESULTS)
+        val result = if (resultOptional.isNullOrEmpty()) resultOptional as ArrayList<String>
+        else arrayListOf("one", "two", "three", "four", "five")
+        InstantiateSpeechDealers()
         mAdapter = ResultAdapter(result)
         recyclerView.adapter = mAdapter
     }
@@ -133,7 +74,7 @@ class MainActivity : AppCompatActivity() {
     }
     override fun onStop() {
         stopVoiceRecorder()
-        mSpeechService?.let { it.removeListener(mSpeechServiceListener) }
+        mSpeechService?.removeListener(mSpeechServiceListener)
         unbindService(mServiceConnection)
         mSpeechService = null
         super.onStop()
@@ -174,25 +115,73 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Private method
+    private fun InstantiateSpeechDealers() {
+        mSpeechServiceListener = object : SpeechService.Listener {
+            override fun onSpeechRecognized(text: String, isFinal: Boolean) {
+                if (isFinal) mVoiceRecorder?.dismiss()
+                if (text.isNotEmpty()) {
+                    runOnUiThread {
+                        if (isFinal) {
+                            conditionLabel.text = ""
+                            mAdapter.addResult(text)
+                            recyclerView.smoothScrollToPosition(0)
+                        } else conditionLabel.text = text
+                    }
+                }
+            }
+        }
+        mServiceConnection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder) {
+                mSpeechService = SpeechService().from(service)
+                mSpeechService?.addListener(listener = mSpeechServiceListener)
+                Log.i("test", "service connected.")
+                status.visibility = View.VISIBLE
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                mSpeechService = null
+                Log.i("test", "service disconnected")
+            }
+        }
+        mVoiceCallback = object : VoiceRecorder.Callback { // 音声認識エンジン
+            override fun onVoiceStart() {
+                showStatus(true)
+                Log.i("test", "voice coming")
+                val sampleRate = mVoiceRecorder?.getSampleRate()
+                if (sampleRate != null && sampleRate != 0) {
+                    mSpeechService?.startRecognizing(sampleRate)
+                }
+            }
+
+            override fun onVoice(data: ByteArray, size: Int) {
+                super.onVoice(data, size)
+                mSpeechService?.recognize(data, size)
+            }
+
+            override fun onVoiceEnd() {
+                showStatus(false)
+                mSpeechService?.finishRecognizing()
+            }
+        }
+    }
+
+
     private fun startVoiceRecorder() {
-        mVoiceRecorder?.let { it.stop() }
+        mVoiceRecorder?.stop()
         mVoiceRecorder = VoiceRecorder(mVoiceCallback)
         mVoiceRecorder?.start()
     }
 
     private fun stopVoiceRecorder() {
-        mVoiceRecorder?.let {
-            it.stop()
-        }
+        mVoiceRecorder?.stop()
         mVoiceRecorder = null
     }
 
     private fun showStatus(hearingVoice: Boolean) {
         runOnUiThread {
+            // UIスレッドにカラー変更処置を投げる。
             val color = if (hearingVoice) mColorHearing else mColorNotHearing
             status.setTextColor(color)
         }
     }
-
-
 }

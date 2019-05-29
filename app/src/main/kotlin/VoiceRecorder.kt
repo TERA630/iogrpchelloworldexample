@@ -9,14 +9,14 @@ import java.util.*
 import kotlin.concurrent.thread
 import kotlin.concurrent.withLock
 
+const val AMPLITUDE_THRESHOLD = 1500
+const val SPEECH_TIMEOUT_MILLIS = 2000
+const val MAX_SPEECH_LENGTH_MILLIS = 30 * 1000
+
 class VoiceRecorder(private val mCallback: Callback) {
     private val SAMPLE_RATE_CANDIDATES = intArrayOf(16000, 11025, 22050, 44100)
     private val CHANNEL = AudioFormat.CHANNEL_IN_MONO
     private val ENCODING = AudioFormat.ENCODING_PCM_16BIT
-
-    private val AMPLITUDE_THRESHOLD = 1500
-    private val SPEECH_TIMEOUT_MILLIS = 2000
-    private val MAX_SPEECH_LENGTH_MILLIS = 30 * 1000
 
     interface Callback {
         fun onVoiceStart()  // called when the recorder starts hearing voice.
@@ -24,9 +24,7 @@ class VoiceRecorder(private val mCallback: Callback) {
             // @param data: The audio data in AudioFormat#ENCORDING_PCM_16BIT
             // @param size: The size of actual data in
         }
-
         fun onVoiceEnd() {} // called when the recorder stops hearing voice.
-
     }
 
     private var mAudioRecord: AudioRecord? = null
@@ -76,10 +74,8 @@ class VoiceRecorder(private val mCallback: Callback) {
     // Retries the sample rate currently used to record audio
 
     fun getSampleRate(): Int {
-        if (mAudioRecord != null) {
-            val result = mAudioRecord?.sampleRate ?: 0
-            return result
-        } else return 0
+        val result = mAudioRecord?.sampleRate ?: 0
+        return result
     }
 
     private fun createAudioRecord(): AudioRecord? {

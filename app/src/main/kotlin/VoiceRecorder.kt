@@ -3,32 +3,28 @@ package com.example.gRPCTest
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.provider.MediaStore
 import android.util.Log
-import java.util.*
-import kotlin.concurrent.thread
+import kotlinx.coroutines.*
 import kotlin.concurrent.withLock
+import kotlin.coroutines.CoroutineContext
 
 const val AMPLITUDE_THRESHOLD = 1500
 const val SPEECH_TIMEOUT_MILLIS = 2000
 const val MAX_SPEECH_LENGTH_MILLIS = 30 * 1000
 
 class VoiceRecorder(private val mCallback: Callback) {
-    private val SAMPLE_RATE_CANDIDATES = intArrayOf(16000, 11025, 22050, 44100)
-    private val CHANNEL = AudioFormat.CHANNEL_IN_MONO
-    private val ENCODING = AudioFormat.ENCODING_PCM_16BIT
+    private val cSampleRateCandidates = intArrayOf(16000, 11025, 22050, 44100)
+    private val cChannel = AudioFormat.CHANNEL_IN_MONO
+    private val cEncoding = AudioFormat.ENCODING_PCM_16BIT
+    private var processVoiceJob: Job? = null
 
     interface Callback {
         fun onVoiceStart()  // called when the recorder starts hearing voice.
-        fun onVoice(data: ByteArray, size: Int) { // called when the recorder is hearing voice.
-            // @param data: The audio data in AudioFormat#ENCORDING_PCM_16BIT
-            // @param size: The size of actual data in
-        }
+        fun onVoice(data: ByteArray, size: Int) {}// called when the recorder is hearing voice.
         fun onVoiceEnd() {} // called when the recorder stops hearing voice.
     }
 
     private var mAudioRecord: AudioRecord? = null
-    private var mThread: Thread? = null
     private lateinit var mBuffer: ByteArray
     private var mLock = java.util.concurrent.locks.ReentrantLock()
 
@@ -39,24 +35,24 @@ class VoiceRecorder(private val mCallback: Callback) {
     private var mVoiceStartedMillis: Long = 0
 
     fun start() {
-        stop() // if it is current ongoing, stop it.
-        mAudioRecord = createAudioRecord()
-        if (mAudioRecord == null) throw java.lang.RuntimeException("Cannot instantiate VoiceRecorder")
-        else {
-            Log.i("test", "voice recorder started..")
-            mAudioRecord?.startRecording()
-            mThread = Thread(ProcessVoice())
-            mThread!!.start()
+        if (processVoiceJob != null) stop() // if it is current ongoing, stop it.
+
+        mAudioRecord = createAudioRecord() ?: throw java.lang.RuntimeException("Cannot instantiate VoiceRecorder")
+        mAudioRecord?.startRecording()
+        val scope = CoroutineScope(Dispatchers.Default)
+        processVoiceJob = scope.launch {
+            while (isActive) {
+                processVoice(scope)
+            }
         }
+        Log.i("voiceRecorder", "Coroutine start?")
     }
 
     fun stop() {
         mLock.withLock {
             dismiss()
-            mThread?.let {
-                it.interrupt()
-                mThread = null
-            }
+            processVoiceJob?.cancel()
+
             mAudioRecord?.let {
                 it.stop()
                 it.release()
@@ -64,7 +60,6 @@ class VoiceRecorder(private val mCallback: Callback) {
             mAudioRecord = null
         }
     }
-
     fun dismiss() {
         if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
             mLastVoiceHeardMillis = Long.MAX_VALUE
@@ -73,22 +68,16 @@ class VoiceRecorder(private val mCallback: Callback) {
     }
     // Retries the sample rate currently used to record audio
 
-    fun getSampleRate(): Int {
-        val result = mAudioRecord?.sampleRate ?: 0
-        return result
-    }
+    fun getSampleRate() = mAudioRecord?.sampleRate ?: 0
 
     private fun createAudioRecord(): AudioRecord? {
 
-        for (sampleRate in SAMPLE_RATE_CANDIDATES) {
-            val sizeInBytes = AudioRecord.getMinBufferSize(sampleRate, CHANNEL, ENCODING)
+        for (sampleRate in cSampleRateCandidates) {
+            val sizeInBytes = AudioRecord.getMinBufferSize(sampleRate, cChannel, cEncoding)
             if (sizeInBytes == AudioRecord.ERROR_BAD_VALUE) {
                 continue
             }
-            val audioRecord = AudioRecord(
-                MediaRecorder.AudioSource.MIC,
-                sampleRate, CHANNEL, ENCODING, sizeInBytes
-            )
+            val audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, cChannel, cEncoding, sizeInBytes)
             if (audioRecord.state == AudioRecord.STATE_INITIALIZED) {
                 mBuffer = ByteArray(sizeInBytes)
                 return audioRecord
@@ -100,35 +89,31 @@ class VoiceRecorder(private val mCallback: Callback) {
     }
     // Continuously processes the captured audio and Notifies
 
-    inner class ProcessVoice : Runnable {
-        override fun run() {
-            runLoop@ while (!Thread.currentThread().isInterrupted) {
-                mLock.withLock {
-                    mAudioRecord?.let {
-                            val size = it.read(mBuffer, 0, mBuffer.size)
-                            val now = System.currentTimeMillis()
-                            if (isHearingVoice(mBuffer, size)) {
-                                if (mLastVoiceHeardMillis == Long.MAX_VALUE) { // ボイスレコーダー開始時にmLast..はMAX_VALUEに､mVoiceStart..は今に
-                                    mVoiceStartedMillis = now
-                                    mCallback.onVoiceStart()
-                                }
-                                mCallback.onVoice(mBuffer, size)
-                                mLastVoiceHeardMillis = now
-                                if (now - mVoiceStartedMillis > MAX_SPEECH_LENGTH_MILLIS) end() // 経過30秒で終わり
-                                } else if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
-                                    mCallback.onVoice(mBuffer, size)
-                                if (now - mVoiceStartedMillis > SPEECH_TIMEOUT_MILLIS) end() // 無音は2秒でタイムアウト
-                            }
+    private fun processVoice(scope: CoroutineScope) {
+        mLock.withLock {
+            mAudioRecord?.let {
+                val size = it.read(mBuffer, 0, mBuffer.size)
+                val now = System.currentTimeMillis()
+                if (isHearingVoice(mBuffer, size)) {
+                    if (mLastVoiceHeardMillis == Long.MAX_VALUE) { // ボイスレコーダー開始時にmLast..はMAX_VALUEに､mVoiceStart..は今に
+                        mVoiceStartedMillis = now
+                        mCallback.onVoiceStart()
                     }
-
+                    mCallback.onVoice(mBuffer, size)
+                    mLastVoiceHeardMillis = now
+                    if (now - mVoiceStartedMillis > MAX_SPEECH_LENGTH_MILLIS) end() // 経過30秒で終わり
+                } else if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
+                    mCallback.onVoice(mBuffer, size)
+                    if (now - mVoiceStartedMillis > SPEECH_TIMEOUT_MILLIS) end() // 無音は2秒でタイムアウト
+                }
                 }
             }
-        }
+    }
 
-        private fun end() {
-            mLastVoiceHeardMillis = Long.MAX_VALUE
-            mCallback.onVoiceEnd()
-        }
+    private fun end() {
+        mLastVoiceHeardMillis = Long.MAX_VALUE
+        mCallback.onVoiceEnd()
+    }
 
         private fun isHearingVoice(buffer: ByteArray, size: Int): Boolean {
             for (i in 0 until size - 1 step 2) {
@@ -139,6 +124,5 @@ class VoiceRecorder(private val mCallback: Callback) {
                 if (s > AMPLITUDE_THRESHOLD) return true
             }
             return false
-        }
     }
 }

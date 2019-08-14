@@ -1,6 +1,8 @@
 <component name="ProjectDictionaryState">
   <dictionary name="YOSHI">
     <words>
+      <w>coroutine</w>
+      <w>coroutines</w>
       <w>golang</w>
       <w>protobuf</w>
       <w>ptypes</w>

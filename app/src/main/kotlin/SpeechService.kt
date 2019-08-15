@@ -29,7 +29,6 @@ import kotlin.math.max
 const val ACCESS_TOKEN_EXPIRATION_TOLERANCE = 30 * 60 * 1000 // thirty minutes
 /** We refresh the current access token before it expires.  */
 const val ACCESS_TOKEN_FETCH_MARGIN = 60 * 1000 // one minute
-
 const val PREF_ACCESS_TOKEN_EXPIRATION_TIME = "access_token_expiration_time"
 
 class SpeechService : Service() {
@@ -79,11 +78,9 @@ class SpeechService : Service() {
                     }
                 }
             }
-
             override fun onCompleted() {
                 Log.i(TAG, "API completed.")
             }
-
             override fun onError(t: Throwable?) {
                 Log.e(TAG, "Error calling the API.", t)
             }

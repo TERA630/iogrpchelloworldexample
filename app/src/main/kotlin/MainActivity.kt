@@ -1,17 +1,18 @@
 package com.example.gRPCTest
 
+import android.Manifest.permission
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.os.Bundle
-import android.support.v7.app.AppCompatActivity
-
 import android.os.IBinder
 import android.os.PersistableBundle
-import android.Manifest.permission
-import android.content.*
-import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat.checkSelfPermission
 import android.support.v7.app.AlertDialog
-import android.support.v7.widget.LinearLayoutManager
+import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.view.View
 import kotlinx.android.synthetic.main.activity_main.*
@@ -56,17 +57,21 @@ class MainActivity : AppCompatActivity() {
         bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE)
 
         val audioPermission = checkSelfPermission(this.baseContext, permission.RECORD_AUDIO)
-        if (audioPermission == PERMISSION_GRANTED) {
-            Log.i("test", "this app has already permission.")
-            startVoiceRecorder()
-        } else if (shouldShowRequestPermissionRationale(permission.RECORD_AUDIO)) {
-            AlertDialog.Builder(this)
-                .setTitle("permission")
-                .setMessage("このアプリの利用には音声の録音を許可してください.")
-            Log.w("test", "permission request was disabled")
-        } else {
-            Log.w("test", "this app has no permission yet.")
-            ActivityCompat.requestPermissions(this, arrayOf(permission.RECORD_AUDIO), REQUEST_CODE_RECORD)
+        when {
+            audioPermission == PERMISSION_GRANTED -> {
+                Log.i("test", "this app has already permission.")
+                startVoiceRecorder()
+            }
+            shouldShowRequestPermissionRationale(permission.RECORD_AUDIO) -> {
+                AlertDialog.Builder(this)
+                    .setTitle("permission")
+                    .setMessage("このアプリの利用には音声の録音を許可してください.")
+                Log.w("test", "permission request was disabled")
+            }
+            else -> {
+                Log.w("test", "this app has no permission yet.")
+                ActivityCompat.requestPermissions(this, arrayOf(permission.RECORD_AUDIO), REQUEST_CODE_RECORD)
+            }
         }
 
     }

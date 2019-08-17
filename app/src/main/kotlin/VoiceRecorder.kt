@@ -14,13 +14,13 @@ class VoiceRecorder(private val mCallback: Callback) {
     private val cSampleRateCandidates = intArrayOf(16000, 11025, 22050, 44100)
     private val cChannel = AudioFormat.CHANNEL_IN_MONO
     private val cEncoding = AudioFormat.ENCODING_PCM_16BIT
+    private var processVoiceJob: Job? = null
 
     interface Callback {
         fun onVoiceStart()  // called when the recorder starts hearing voice.
         fun onVoice(data: ByteArray, size: Int) {}// called when the recorder is hearing voice.
         fun onVoiceEnd() {} // called when the recorder stops hearing voice.
     }
-
     private lateinit var mAudioRecord: AudioRecord
     private lateinit var mBuffer: ByteArray
     private var mLock = java.util.concurrent.locks.ReentrantLock()
@@ -33,7 +33,6 @@ class VoiceRecorder(private val mCallback: Callback) {
 
     fun start() {
         if (mProcessVoiceJob != null) stop() // if it is current ongoing, stop it.
-
         mAudioRecord = createAudioRecord()
         mAudioRecord.startRecording()
         val scope = CoroutineScope(Dispatchers.Default)
@@ -48,6 +47,9 @@ class VoiceRecorder(private val mCallback: Callback) {
         mLock.withLock {
             mAudioRecord.stop()
             mAudioRecord.release()
+            runBlocking {
+                processVoiceJob?.cancelAndJoin()
+            }
         }
     }
     fun dismiss() {
@@ -56,7 +58,6 @@ class VoiceRecorder(private val mCallback: Callback) {
             mCallback.onVoiceEnd()
         }
     }
-
     fun getSampleRate() = mAudioRecord.sampleRate
 
     private fun createAudioRecord(): AudioRecord {

@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import kotlinx.android.synthetic.main.item_result.view.*
 import java.util.*
 
-class ResultAdapter(private var mResults: ArrayList<String>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class ResultAdapter(private var mResults: ArrayList<String>, val viewModel: MainViewModel) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     fun addResult(result: String) {
         mResults.add(0, result)

@@ -34,7 +34,7 @@ const val PREF_ACCESS_TOKEN_EXPIRATION_TIME = "access_token_expiration_time"
 class SpeechService : Service() {
     private val TAG = "SpeechService"
 
-    private val HOSTNAME = "speech.googleapis.com"
+    private val googleHostName = "speech.googleapis.com"
     private val PORT = 443
 
     private val PREFS = "SpeechService"
@@ -114,7 +114,6 @@ class SpeechService : Service() {
             }
         }
     }
-
     override fun onBind(intent: Intent): IBinder {
         return mBinder
     }
@@ -133,12 +132,8 @@ class SpeechService : Service() {
         }
     }
 
-    fun addListener(listener: Listener) {
-        mListeners.add(listener)
-    }
-    fun removeListener(listener: Listener) {
-        mListeners.remove(listener)
-    }
+    fun addListener(listener: Listener) = mListeners.add(listener)
+    fun removeListener(listener: Listener) = mListeners.remove(listener)
     fun from(binder: IBinder): SpeechService {
         return (binder as SpeechBinder).getService()
     }
@@ -244,7 +239,7 @@ class SpeechService : Service() {
             val googleCredentials = GoogleCredentials(result).createScoped(SCOPE)
             val interceptor = GoogleCredentialsInterceptor(googleCredentials)
             val channel = OkHttpChannelProvider()
-                .builderForAddress(HOSTNAME, PORT)
+                .builderForAddress(googleHostName, PORT)
                 .nameResolverFactory(DnsNameResolverProvider())
                 .intercept(interceptor)
                 .build()
@@ -261,7 +256,6 @@ class SpeechService : Service() {
 
     interface Listener {
         // called when a new piece of text was recognized by the CloudSpeechAPI
-        // @param text The text.
         // @param isFinal when the API finished processing audio.
         fun onSpeechRecognized(text: String, isFinal: Boolean)
     }

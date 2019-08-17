@@ -1,11 +1,14 @@
 package com.example.gRPCTest
 
-import android.Manifest.permission
+
+import android.arch.lifecycle.ViewModelProviders
+
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager.PERMISSION_GRANTED
+import android.Manifest.permission
 import android.os.Bundle
 import android.os.IBinder
 import android.os.PersistableBundle
@@ -18,6 +21,7 @@ import android.view.View
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_result.*
 
+
 const val STATE_RESULTS = "results"
 const val COLOR_HEARING = "colorHearing"
 const val COLOR_NOT_HEARING = "colorNotHearing"
@@ -29,7 +33,7 @@ class MainActivity : AppCompatActivity() {
     private var mColorNotHearing = 0
     private var mSpeechService: SpeechService? = null // given after SpeechService begun
     private var mVoiceRecorder: VoiceRecorder? = null // given after on Start and permission was granted
-
+    private lateinit var vModel: MainViewModel
     private lateinit var mAdapter: ResultAdapter // initialized by on Create
     private lateinit var mSpeechServiceListener: SpeechService.Listener // initialized by on Create
     private lateinit var mServiceConnection: ServiceConnection // initialized by onCreate
@@ -39,6 +43,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        vModel = ViewModelProviders.of(this@MainActivity).get(MainViewModel::class.java)
+
         mColorHearing = getColor(R.color.status_hearing)
         mColorNotHearing = getColor(R.color.status_not_hearing)
 
@@ -46,10 +52,9 @@ class MainActivity : AppCompatActivity() {
         val result = if (resultOptional.isNullOrEmpty()) arrayListOf("one", "two", "three", "four", "five")
         else resultOptional
         instantiateSpeechDealers()
-        mAdapter = ResultAdapter(result)
+        mAdapter = ResultAdapter(result,vModel)
         recyclerView.adapter = mAdapter
     }
-
     override fun onStart() {
         super.onStart()
         // Prepare Cloud Speech API
@@ -141,7 +146,7 @@ class MainActivity : AppCompatActivity() {
                 mSpeechService = null
             }
         }
-        mVoiceCallback = object : VoiceRecorder.Callback { // 音声認識エンジン
+        mVoiceCallback = object : VoiceRecorder.Callback { // VoiceRecorderの録音時イベントの実装
             override fun onVoiceStart() {
                 showStatus(true)
                 val sampleRate = mVoiceRecorder?.getSampleRate()

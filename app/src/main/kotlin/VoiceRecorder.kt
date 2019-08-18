@@ -26,18 +26,16 @@ class VoiceRecorder(private val mCallback: Callback) {
     private var mLock = java.util.concurrent.locks.ReentrantLock()
     private var mProcessVoiceJob: Job? = null
 
-    /** The timestamp of the last time that voice is heard.  */
     private var mLastVoiceHeardMillis = java.lang.Long.MAX_VALUE
-    /** The timestamp when the current voice is started.  */
     private var mVoiceStartedMillis: Long = 0
 
-    fun start() {
+    fun start() { // Called by MainActivity@StartvoiceRecorder
         if (mProcessVoiceJob != null) stop() // if it is current ongoing, stop it.
         mAudioRecord = createAudioRecord()
         mAudioRecord.startRecording()
         val scope = CoroutineScope(Dispatchers.Default)
         mProcessVoiceJob = scope.launch {
-                processVoice(scope)
+            processVoice(scope)
         }
     }
 

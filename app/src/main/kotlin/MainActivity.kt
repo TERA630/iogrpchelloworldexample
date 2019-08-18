@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.Manifest.permission
+import android.arch.lifecycle.Observer
 import android.os.Bundle
 import android.os.IBinder
 import android.os.PersistableBundle
@@ -16,9 +17,10 @@ import android.support.v4.content.ContextCompat.checkSelfPermission
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
-import android.view.View
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.android.synthetic.main.item_result.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 const val STATE_RESULTS = "results"
 const val COLOR_HEARING = "colorHearing"
@@ -26,7 +28,7 @@ const val COLOR_NOT_HEARING = "colorNotHearing"
 
 class MainActivity : AppCompatActivity() {
 
-    private val REQUEST_CODE_RECORD = 1
+    private val mrequestCodeRecord = 1
     private var mColorHearing = 0
     private var mColorNotHearing = 0
     private var mSpeechService: SpeechService? = null // given after SpeechService begun
@@ -42,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         vModel = ViewModelProviders.of(this@MainActivity).get(MainViewModel::class.java)
+        vModel.isVoiceRecording.postValue(false)
 
         mColorHearing = getColor(R.color.status_hearing)
         mColorNotHearing = getColor(R.color.status_not_hearing)
@@ -51,7 +54,7 @@ class MainActivity : AppCompatActivity() {
         else resultOptional
 
         initSpeechProcessor()
-        mAdapter = ResultAdapter(result)
+        mAdapter = ResultAdapter(result,vModel)
         recyclerView.adapter = mAdapter
     }
     override fun onStart() {
@@ -63,7 +66,6 @@ class MainActivity : AppCompatActivity() {
         val audioPermission = checkSelfPermission(this.baseContext, permission.RECORD_AUDIO)
         when {
             audioPermission == PERMISSION_GRANTED -> {
-                Log.i("test", "this app has already permission.")
                 startVoiceRecorder()
             }
             shouldShowRequestPermissionRationale(permission.RECORD_AUDIO) -> {
@@ -74,10 +76,13 @@ class MainActivity : AppCompatActivity() {
             }
             else -> {
                 Log.w("test", "this app has no permission yet.")
-                ActivityCompat.requestPermissions(this, arrayOf(permission.RECORD_AUDIO), REQUEST_CODE_RECORD)
+                ActivityCompat.requestPermissions(this, arrayOf(permission.RECORD_AUDIO), mrequestCodeRecord)
             }
         }
-
+        vModel.isVoiceRecording.observe(this, Observer<Boolean> { t ->
+            if (t != null && t == true) conditionLabel.setTextColor(mColorHearing)
+            else conditionLabel.setTextColor(mColorNotHearing)
+        })
     }
     override fun onStop() {
         stopVoiceRecorder()
@@ -123,11 +128,15 @@ class MainActivity : AppCompatActivity() {
     private fun initSpeechProcessor() {
         mSpeechServiceListener = object : SpeechService.Listener {
             override fun onSpeechRecognized(text: String, isFinal: Boolean) {
+                // text 現在までに認識されたお言葉｡ 　認識終了するとisFinal　= trueになる｡
                 if (isFinal) mVoiceRecorder?.dismiss()
                 if (text.isNotEmpty()) {
+                    val job = CoroutineScope(Dispatchers.Default).launch {
+                        vModel.recognizedChannel.send(text)
+                    }
                     runOnUiThread {
                         if (isFinal) {
-                            conditionLabel.text = ""
+                            vModel.isVoiceRecording.value = false
                             mAdapter.addResult(text)
                             recyclerView.smoothScrollToPosition(0)
                         } else conditionLabel.text = text
@@ -139,7 +148,6 @@ class MainActivity : AppCompatActivity() {
             override fun onServiceConnected(name: ComponentName?, service: IBinder) {
                 mSpeechService = SpeechService().from(service)
                 mSpeechService?.addListener(listener = mSpeechServiceListener)
-                status.visibility = View.VISIBLE
             }
             override fun onServiceDisconnected(name: ComponentName?) {
                 mSpeechService = null
@@ -147,10 +155,10 @@ class MainActivity : AppCompatActivity() {
         }
         mVoiceCallback = object : VoiceRecorder.Callback { // VoiceRecorderの録音時イベントの実装
             override fun onVoiceStart() {
-                showStatus(true)
                 val sampleRate = mVoiceRecorder?.getSampleRate()
                 if (sampleRate != null && sampleRate != 0) {
                     mSpeechService?.startRecognizing(sampleRate)
+                    vModel.isVoiceRecording.postValue(true)
                 }
             }
             override fun onVoice(data: ByteArray, size: Int) {
@@ -158,8 +166,15 @@ class MainActivity : AppCompatActivity() {
                 mSpeechService?.recognize(data, size)
             }
             override fun onVoiceEnd() {
-                showStatus(false)
                 mSpeechService?.finishRecognizing()
+                vModel.isVoiceRecording.postValue(false)
+            }
+        }
+        startRecordingBtn.setOnClickListener {
+            val uIScope = CoroutineScope(Dispatchers.Main)
+            uIScope.launch {
+                val channelText = vModel.recognizedChannel.receive()
+                channelViewer.text = channelText
             }
         }
     }
@@ -173,13 +188,5 @@ class MainActivity : AppCompatActivity() {
     private fun stopVoiceRecorder() {
         mVoiceRecorder?.stop()
         mVoiceRecorder = null
-    }
-
-    private fun showStatus(hearingVoice: Boolean) {
-        runOnUiThread {
-            // UIスレッドにカラー変更処置を投げる。
-            val color = if (hearingVoice) mColorHearing else mColorNotHearing
-            status.setTextColor(color)
-        }
     }
 }

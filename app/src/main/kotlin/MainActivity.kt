@@ -2,7 +2,6 @@ package com.example.gRPCTest
 
 
 import android.arch.lifecycle.ViewModelProviders
-
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -20,7 +19,6 @@ import android.util.Log
 import android.view.View
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.item_result.*
-
 
 const val STATE_RESULTS = "results"
 const val COLOR_HEARING = "colorHearing"
@@ -51,8 +49,9 @@ class MainActivity : AppCompatActivity() {
         val resultOptional = savedInstanceState?.getStringArrayList(STATE_RESULTS)
         val result = if (resultOptional.isNullOrEmpty()) arrayListOf("one", "two", "three", "four", "five")
         else resultOptional
-        instantiateSpeechDealers()
-        mAdapter = ResultAdapter(result,vModel)
+
+        initSpeechProcessor()
+        mAdapter = ResultAdapter(result)
         recyclerView.adapter = mAdapter
     }
     override fun onStart() {
@@ -121,7 +120,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
     // Private method
-    private fun instantiateSpeechDealers() {
+    private fun initSpeechProcessor() {
         mSpeechServiceListener = object : SpeechService.Listener {
             override fun onSpeechRecognized(text: String, isFinal: Boolean) {
                 if (isFinal) mVoiceRecorder?.dismiss()

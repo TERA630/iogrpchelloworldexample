@@ -4,7 +4,9 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import kotlinx.coroutines.*
-import kotlin.concurrent.withLock
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
 
 const val AMPLITUDE_THRESHOLD = 1500
 const val SPEECH_TIMEOUT_MILLIS = 2000
@@ -23,7 +25,7 @@ class VoiceRecorder(private val mCallback: Callback) {
     }
     private lateinit var mAudioRecord: AudioRecord
     private lateinit var mBuffer: ByteArray
-    private var mLock = java.util.concurrent.locks.ReentrantLock()
+    private var mLock = Mutex()
     private var mProcessVoiceJob: Job? = null
 
     private var mLastVoiceHeardMillis = java.lang.Long.MAX_VALUE
@@ -35,21 +37,24 @@ class VoiceRecorder(private val mCallback: Callback) {
         mAudioRecord.startRecording()
         val scope = CoroutineScope(Dispatchers.Default)
         mProcessVoiceJob = scope.launch {
-            processVoice(scope)
+            mLock.withLock {
+                processVoice(scope)
+            }
         }
     }
 
     fun stop() {
         mProcessVoiceJob?.cancel()
         dismiss()
-        mLock.withLock {
-            mAudioRecord.stop()
-            mAudioRecord.release()
-            runBlocking {
+        runBlocking {
+            mLock.withLock {
+                mAudioRecord.stop()
+                mAudioRecord.release()
                 processVoiceJob?.cancelAndJoin()
             }
         }
     }
+
     fun dismiss() {
         if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
             mLastVoiceHeardMillis = Long.MAX_VALUE
@@ -77,7 +82,6 @@ class VoiceRecorder(private val mCallback: Callback) {
 
     // Continuously processes the captured audio and Notifies
     private fun processVoice(scope: CoroutineScope) {
-        mLock.withLock {
             while (scope.isActive) {
                 val size = mAudioRecord.read(mBuffer, 0, mBuffer.size)
                 val now = System.currentTimeMillis()
@@ -94,7 +98,6 @@ class VoiceRecorder(private val mCallback: Callback) {
                     if (now - mVoiceStartedMillis > SPEECH_TIMEOUT_MILLIS) end() // 無音は2秒でタイムアウト
                 }
             }
-        }
     }
 
     private fun end() {

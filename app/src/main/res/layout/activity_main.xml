@@ -7,19 +7,38 @@
         android:layout_height="match_parent">
 
     <TextView
-            android:id="@+id/conditionLabel"
+            android:id="@+id/audioRecorderStatus"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent" android:layout_marginStart="8dp"
             app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="8dp"
+            android:text="AudioRecorder stand by.."
+            tools:text="Showing Condition"
+            android:contentDescription="@string/indicator"/>
+
+    <TextView
+            android:id="@+id/voiceRecorderStatus"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@id/audioRecorderStatus"
+            app:layout_constraintStart_toStartOf="parent" android:layout_marginStart="8dp"
+            app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="8dp"
             android:text="@string/listening"
+            tools:text="Showing Condition"
+            android:contentDescription="@string/indicator"/>
+    <TextView
+            android:id="@+id/recognizingStatus"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@id/voiceRecorderStatus"
+            app:layout_constraintStart_toStartOf="parent" android:layout_marginStart="8dp"
+            app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="8dp"
+            android:text="@string/recognizingSpeech"
             tools:text="Showing Condition"
             android:contentDescription="@string/indicator"/>
 
     <Button android:id="@+id/startRecordingBtn"
             android:text="@string/startRecording"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" app:layout_constraintTop_toTopOf="parent"
+            android:layout_marginTop="8dp" app:layout_constraintTop_toBottomOf="@id/recognizingStatus"
             app:layout_constraintStart_toStartOf="parent" android:layout_marginStart="8dp"
             app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="8dp"
             android:layout_marginBottom="8dp" app:layout_constraintBottom_toTopOf="@+id/recyclerView"
@@ -28,15 +47,11 @@
     <android.support.v7.widget.RecyclerView
             android:id="@+id/recyclerView"
             android:layout_width="match_parent" android:layout_height="340dp"
-            app:layout_constraintTop_toBottomOf="@+id/conditionLabel"
+            app:layout_constraintTop_toBottomOf="@+id/startRecordingBtn" android:layout_marginTop="8dp"
+            app:layout_constraintStart_toStartOf="parent" android:layout_marginStart="8dp"
+            app:layout_constraintBottom_toBottomOf="parent" android:layout_marginBottom="8dp"
+            app:layoutManager="android.support.v7.widget.LinearLayoutManager"/>
 
-            android:layout_marginBottom="8dp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_marginStart="8dp" android:layout_marginTop="8dp"
-
-            app:layoutManager="android.support.v7.widget.LinearLayoutManager"
-    />
     <TextView android:id="@+id/channelViewer"
               app:layout_constraintTop_toBottomOf="@id/startRecordingBtn"
               app:layout_constraintStart_toStartOf="parent"

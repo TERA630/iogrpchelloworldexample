@@ -47,7 +47,7 @@ class SpeechService : Service() {
     private val mListeners = mutableListOf<Listener>()
 
     //
-    private lateinit var mApi: SpeechGrpc.SpeechStub
+    private var mApi: SpeechGrpc.SpeechStub? = null
     private lateinit var mFileResponseObserver: StreamObserver<RecognizeResponse>
     private lateinit var mResponseObserver: StreamObserver<StreamingRecognizeResponse>
     private var mRequestObserver: StreamObserver<StreamingRecognizeRequest>? = null
@@ -90,8 +90,8 @@ class SpeechService : Service() {
                 val isFinal = false
                 var text = ""
                 response?.let {
-                    if (response.resultsCount > 0) {
-                        val result = response.getResults(0)
+                    if (it.resultsCount > 0) {
+                        val result = it.getResults(0)
                         if (result.alternativesCount > 0) {
                             val alternative = result.getAlternatives(0)
                             text = alternative.transcript
@@ -122,12 +122,14 @@ class SpeechService : Service() {
         mHandler?.removeCallbacks(mFetchAccessTokenRunnable)
         mHandler = null
         // Release gRPC channel
-        val channel: ManagedChannel = mApi.channel as ManagedChannel
-        if (channel.isShutdown) {
-            try {
-                channel.shutdown().awaitTermination(5, TimeUnit.SECONDS)
-            } catch (e: InterruptedException) {
-                Log.e(TAG, "Error shutting down the gRPC channel. $e")
+        mApi?.let {
+            val channel = it.channel as ManagedChannel
+            if (channel.isShutdown) {
+                try {
+                    channel.shutdown().awaitTermination(5, TimeUnit.SECONDS)
+                } catch (e: InterruptedException) {
+                    Log.e(TAG, "Error shutting down the gRPC channel. $e")
+                }
             }
         }
     }
@@ -162,11 +164,8 @@ class SpeechService : Service() {
     val mFetchAccessTokenRunnable = Runnable { fetchAccessToken() }
 
     fun startRecognizing(sampleRate: Int) {
-        if (mApi == null) {
-            Log.w(TAG, "API not ready. Ignoring the request")
-            return
-        } else {
-            mRequestObserver = mApi.streamingRecognize(mResponseObserver)
+        mApi?.let {
+            mRequestObserver = it.streamingRecognize(mResponseObserver)
             val recognitionConfig = RecognitionConfig.newBuilder()
                 .setLanguageCode("ja-JP")
                 .setEncoding(RecognitionConfig.AudioEncoding.LINEAR16)
@@ -181,6 +180,9 @@ class SpeechService : Service() {
                 .setStreamingConfig(streamingRecognitionConfig)
                 .build()
             mRequestObserver?.onNext(streamingRecognizeRequest)
+        } ?: run {
+            Log.w(TAG, "API not ready. Ignoring the request")
+            return
         }
     }
 

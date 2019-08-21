@@ -151,7 +151,7 @@ class MainActivity : AppCompatActivity() {
                             vModel.isVoiceRecording.value = false
                             vModel.isRecognizing.postValue(false)
                             mAdapter.addResult(text)
-                        } else voiceRecorderStatus.text = text
+                        }
                     }
                 }
             }

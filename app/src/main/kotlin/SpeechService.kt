@@ -90,8 +90,8 @@ class SpeechService : Service() {
                 val isFinal = false
                 var text = ""
                 response?.let {
-                    if (response.resultsCount > 0) {
-                        val result = response.getResults(0)
+                    if (it.resultsCount > 0) {
+                        val result = it.getResults(0)
                         if (result.alternativesCount > 0) {
                             val alternative = result.getAlternatives(0)
                             text = alternative.transcript

@@ -5,18 +5,20 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import kotlinx.coroutines.*
 import kotlin.concurrent.withLock
+import kotlin.math.abs
 
 const val AMPLITUDE_THRESHOLD = 1500
 const val SPEECH_TIMEOUT_MILLIS = 2000
 const val MAX_SPEECH_LENGTH_MILLIS = 30 * 1000
 
-class VoiceRecorder(private val mCallback: Callback) {
+
+class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) {
     private val cSampleRateCandidates = intArrayOf(16000, 11025, 22050, 44100)
     private val cChannel = AudioFormat.CHANNEL_IN_MONO
     private val cEncoding = AudioFormat.ENCODING_PCM_16BIT
     private var processVoiceJob: Job? = null
 
-    interface Callback {
+    interface Callback { // 実装を今回はMainActivityに委譲
         fun onVoiceStart()  // called when the recorder starts hearing voice.
         fun onVoice(data: ByteArray, size: Int) {}// called when the recorder is hearing voice.
         fun onVoiceEnd() {} // called when the recorder stops hearing voice.
@@ -67,9 +69,11 @@ class VoiceRecorder(private val mCallback: Callback) {
             val audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, cChannel, cEncoding, sizeInBytes)
             if (audioRecord.state == AudioRecord.STATE_INITIALIZED) {
                 mBuffer = ByteArray(sizeInBytes)
+                vModel.isAudioRecordworking.postValue(true)
                 return audioRecord
             } else {
                 audioRecord.release()
+                vModel.isAudioRecordworking.postValue(false)
             }
         }
         throw java.lang.RuntimeException("Cannot instantiate VoiceRecorder")
@@ -107,7 +111,7 @@ class VoiceRecorder(private val mCallback: Callback) {
             var s = buffer[i + 1].toInt() // Little endian  上位バイト
             if (s < 0) s *= -1 // 負数なら正数に
             s = s shl 8 // 上位バイト　
-            s += Math.abs(buffer[i].toInt()) //　下位バイト
+            s += abs(buffer[i].toInt()) //　下位バイト
                 if (s > AMPLITUDE_THRESHOLD) return true
         }
         return false

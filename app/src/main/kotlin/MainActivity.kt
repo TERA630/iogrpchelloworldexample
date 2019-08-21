@@ -143,13 +143,14 @@ class MainActivity : AppCompatActivity() {
                 if (isFinal) mVoiceRecorder?.dismiss()
                 if (text.isNotEmpty()) {
                     val job = CoroutineScope(Dispatchers.Default).launch {
+                        vModel.isRecognizing.postValue(true)
                         vModel.recognizedChannel.send(text)
                     }
                     runOnUiThread {
                         if (isFinal) {
                             vModel.isVoiceRecording.value = false
+                            vModel.isRecognizing.postValue(false)
                             mAdapter.addResult(text)
-                            recyclerView.smoothScrollToPosition(0)
                         } else voiceRecorderStatus.text = text
                     }
                 }
@@ -188,7 +189,10 @@ class MainActivity : AppCompatActivity() {
                     channelViewer.text = channelText
                 }
             } else {
-                if (mChannelJob!!.isActive) return@setOnClickListener
+                if (mChannelJob!!.isActive) {
+                    mChannelJob!!.cancel()
+                    return@setOnClickListener
+                }
                 else mChannelJob = CoroutineScope(Dispatchers.Main).launch {
                     val channelText = vModel.recognizedChannel.receive()
                     channelViewer.text = channelText
@@ -199,7 +203,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun startVoiceRecorder() {
         mVoiceRecorder?.stop()
-        mVoiceRecorder = VoiceRecorder(mVoiceCallback)
+        mVoiceRecorder = VoiceRecorder(mVoiceCallback, vModel)
         mVoiceRecorder?.start()
     }
 

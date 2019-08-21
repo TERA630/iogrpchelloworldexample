@@ -45,19 +45,17 @@ class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) 
             }
         }
     }
-
     fun stop() {
         mProcessVoiceJob?.cancel()
         dismiss()
         runBlocking {
-            mLock.withLock {
                 mAudioRecord.stop()
                 mAudioRecord.release()
                 processVoiceJob?.cancelAndJoin()
-            }
         }
     }
-    fun dismiss() {
+
+    fun dismiss() { // Lock外した
         if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
             mLastVoiceHeardMillis = Long.MAX_VALUE
             mCallback.onVoiceEnd()
@@ -110,7 +108,7 @@ class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) 
     }
 
     private fun isHearingVoice(buffer: ByteArray, size: Int): Boolean {
-        for (i in 0 until size - 1 step 2) {
+        for (i in 0 until size - 1 step 2) { // Android writing out big endian
             var s = buffer[i + 1].toInt() // Little endian  上位バイト
             if (s < 0) s *= -1 // 負数なら正数に
             s = s shl 8 // 上位バイト　

@@ -1,14 +1,14 @@
 package com.example.gRPCTest
 
 
+import android.Manifest.permission
+import android.arch.lifecycle.Observer
 import android.arch.lifecycle.ViewModelProviders
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager.PERMISSION_GRANTED
-import android.Manifest.permission
-import android.arch.lifecycle.Observer
 import android.os.Bundle
 import android.os.IBinder
 import android.os.PersistableBundle
@@ -20,6 +20,7 @@ import android.util.Log
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 const val STATE_RESULTS = "results"
@@ -28,7 +29,7 @@ const val COLOR_NOT_HEARING = "colorNotHearing"
 
 class MainActivity : AppCompatActivity() {
 
-    private val mrequestCodeRecord = 1
+    private val mRequestCodeRecord = 1
     private var mColorHearing = 0
     private var mColorNotHearing = 0
     private var mSpeechService: SpeechService? = null // given after SpeechService begun
@@ -38,20 +39,21 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mSpeechServiceListener: SpeechService.Listener // initialized by on Create
     private lateinit var mServiceConnection: ServiceConnection // initialized by onCreate
     private lateinit var mVoiceCallback: VoiceRecorder.Callback // initialized by onCreate
+    private var mChannelJob: Job? = null
+
+
 
     // Activity life Cycle
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         vModel = ViewModelProviders.of(this@MainActivity).get(MainViewModel::class.java)
-        vModel.isVoiceRecording.postValue(false)
 
         mColorHearing = getColor(R.color.status_hearing)
         mColorNotHearing = getColor(R.color.status_not_hearing)
 
-        val resultOptional = savedInstanceState?.getStringArrayList(STATE_RESULTS)
-        val result = if (resultOptional.isNullOrEmpty()) arrayListOf("one", "two", "three", "four", "five")
-        else resultOptional
+        val result = savedInstanceState?.getStringArrayList(STATE_RESULTS)
+            ?: arrayListOf("one", "two", "three", "four", "five")
 
         initSpeechProcessor()
         mAdapter = ResultAdapter(result,vModel)
@@ -76,13 +78,22 @@ class MainActivity : AppCompatActivity() {
             }
             else -> {
                 Log.w("test", "this app has no permission yet.")
-                ActivityCompat.requestPermissions(this, arrayOf(permission.RECORD_AUDIO), mrequestCodeRecord)
+                ActivityCompat.requestPermissions(this, arrayOf(permission.RECORD_AUDIO), mRequestCodeRecord)
             }
         }
-        vModel.isVoiceRecording.observe(this, Observer<Boolean> { t ->
-            if (t != null && t == true) conditionLabel.setTextColor(mColorHearing)
-            else conditionLabel.setTextColor(mColorNotHearing)
+        vModel.isAudioRecordworking.observe(this, Observer<Boolean> { t ->
+            if (t != null && t == true) audioRecorderStatus.setTextColor(mColorHearing)
+            else audioRecorderStatus.setTextColor(mColorNotHearing)
         })
+        vModel.isVoiceRecording.observe(this, Observer<Boolean> { t ->
+            if (t != null && t == true) voiceRecorderStatus.setTextColor(mColorHearing)
+            else voiceRecorderStatus.setTextColor(mColorNotHearing)
+        })
+        vModel.isRecognizing.observe(this, Observer<Boolean> { t ->
+            if (t != null && t == true) recognizingStatus.setTextColor(mColorHearing)
+            else recognizingStatus.setTextColor(mColorNotHearing)
+        })
+
     }
     override fun onStop() {
         stopVoiceRecorder()
@@ -139,7 +150,7 @@ class MainActivity : AppCompatActivity() {
                             vModel.isVoiceRecording.value = false
                             mAdapter.addResult(text)
                             recyclerView.smoothScrollToPosition(0)
-                        } else conditionLabel.text = text
+                        } else voiceRecorderStatus.text = text
                     }
                 }
             }
@@ -171,10 +182,17 @@ class MainActivity : AppCompatActivity() {
             }
         }
         startRecordingBtn.setOnClickListener {
-            val uIScope = CoroutineScope(Dispatchers.Main)
-            uIScope.launch {
-                val channelText = vModel.recognizedChannel.receive()
-                channelViewer.text = channelText
+            if (mChannelJob == null) {
+                mChannelJob = CoroutineScope(Dispatchers.Main).launch {
+                    val channelText = vModel.recognizedChannel.receive()
+                    channelViewer.text = channelText
+                }
+            } else {
+                if (mChannelJob!!.isActive) return@setOnClickListener
+                else mChannelJob = CoroutineScope(Dispatchers.Main).launch {
+                    val channelText = vModel.recognizedChannel.receive()
+                    channelViewer.text = channelText
+                }
             }
         }
     }

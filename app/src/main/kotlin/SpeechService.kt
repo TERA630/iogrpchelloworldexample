@@ -55,6 +55,7 @@ class SpeechService : Service() {
     // Service lifecycle
     override fun onCreate() {
         super.onCreate()
+
         mHandler = Handler()
         fetchAccessToken()
         mResponseObserver = object : StreamObserver<StreamingRecognizeResponse> {
@@ -193,6 +194,7 @@ class SpeechService : Service() {
         mRequestObserver?.onNext(streamingRecognizeRequest)
     }
 
+
     fun finishRecognizing() {
         mRequestObserver?.let {
             it.onCompleted()
@@ -212,6 +214,13 @@ class SpeechService : Service() {
         else null
     }
 
+    private fun saveTokenToPref(token: AccessToken) {
+        val prefs: SharedPreferences = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString(PREF_ACCESS_TOKEN_VALUE, token.tokenValue)
+            .putLong(PREF_ACCESS_TOKEN_EXPIRATION_TIME, token.expirationTime.time)
+            .apply()
+    }
 
     private inner class AccessTokenTask : AsyncTask<Void, Void, AccessToken>() {
 
@@ -224,11 +233,7 @@ class SpeechService : Service() {
                 val credentials = GoogleCredentials.fromStream(inputStream)
                     .createScoped(SCOPE)
                 val token = credentials.refreshAccessToken()
-                val prefs: SharedPreferences = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                prefs.edit()
-                    .putString(PREF_ACCESS_TOKEN_VALUE, token.tokenValue)
-                    .putLong(PREF_ACCESS_TOKEN_EXPIRATION_TIME, token.expirationTime.time)
-                    .apply()
+                saveTokenToPref(token)
                 return token
             } catch (e: IOException) {
                 Log.e(TAG, "Fail to obtain access token $e")
@@ -366,3 +371,4 @@ class SpeechService : Service() {
         }
     }
 }
+

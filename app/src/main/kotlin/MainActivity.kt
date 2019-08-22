@@ -204,7 +204,6 @@ class MainActivity : AppCompatActivity() {
         mVoiceRecorder = VoiceRecorder(mVoiceCallback, vModel)
         mVoiceRecorder?.start()
     }
-
     private fun stopVoiceRecorder() {
         mVoiceRecorder?.stop()
         mVoiceRecorder = null

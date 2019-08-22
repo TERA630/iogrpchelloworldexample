@@ -41,8 +41,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mVoiceCallback: VoiceRecorder.Callback // initialized by onCreate
     private var mChannelJob: Job? = null
 
-
-
     // Activity life Cycle
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

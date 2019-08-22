@@ -6,6 +6,9 @@ import android.media.MediaRecorder
 import kotlinx.coroutines.*
 import kotlin.concurrent.withLock
 import kotlin.math.abs
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
 
 const val AMPLITUDE_THRESHOLD = 1500
 const val SPEECH_TIMEOUT_MILLIS = 2000
@@ -25,7 +28,7 @@ class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) 
     }
     private lateinit var mAudioRecord: AudioRecord
     private lateinit var mBuffer: ByteArray
-    private var mLock = java.util.concurrent.locks.ReentrantLock()
+    private var mLock = Mutex()
     private var mProcessVoiceJob: Job? = null
 
     private var mLastVoiceHeardMillis = java.lang.Long.MAX_VALUE
@@ -37,22 +40,22 @@ class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) 
         mAudioRecord.startRecording()
         val scope = CoroutineScope(Dispatchers.Default)
         mProcessVoiceJob = scope.launch {
-            processVoice(scope)
-        }
-    }
-
-    fun stop() {
-        mProcessVoiceJob?.cancel()
-        dismiss()
-        mLock.withLock {
-            mAudioRecord.stop()
-            mAudioRecord.release()
-            runBlocking {
-                processVoiceJob?.cancelAndJoin()
+            mLock.withLock {
+                processVoice(scope)
             }
         }
     }
-    fun dismiss() {
+    fun stop() {
+        mProcessVoiceJob?.cancel()
+        dismiss()
+        runBlocking {
+                mAudioRecord.stop()
+                mAudioRecord.release()
+                processVoiceJob?.cancelAndJoin()
+        }
+    }
+
+    fun dismiss() { // Lock外した
         if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
             mLastVoiceHeardMillis = Long.MAX_VALUE
             mCallback.onVoiceEnd()
@@ -81,7 +84,6 @@ class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) 
 
     // Continuously processes the captured audio and Notifies
     private fun processVoice(scope: CoroutineScope) {
-        mLock.withLock {
             while (scope.isActive) {
                 val size = mAudioRecord.read(mBuffer, 0, mBuffer.size)
                 val now = System.currentTimeMillis()
@@ -98,7 +100,6 @@ class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) 
                     if (now - mVoiceStartedMillis > SPEECH_TIMEOUT_MILLIS) end() // 無音は2秒でタイムアウト
                 }
             }
-        }
     }
 
     private fun end() {
@@ -107,7 +108,7 @@ class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) 
     }
 
     private fun isHearingVoice(buffer: ByteArray, size: Int): Boolean {
-        for (i in 0 until size - 1 step 2) {
+        for (i in 0 until size - 1 step 2) { // Android writing out big endian
             var s = buffer[i + 1].toInt() // Little endian  上位バイト
             if (s < 0) s *= -1 // 負数なら正数に
             s = s shl 8 // 上位バイト　

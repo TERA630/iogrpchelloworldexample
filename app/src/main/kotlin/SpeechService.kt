@@ -32,14 +32,15 @@ const val ACCESS_TOKEN_FETCH_MARGIN = 60 * 1000 // one minute
 const val PREF_ACCESS_TOKEN_EXPIRATION_TIME = "access_token_expiration_time"
 
 class SpeechService : Service() {
-    private val TAG = "SpeechService"
+    private val mTag = "SpeechService"
 
     private val googleHostName = "speech.googleapis.com"
-    private val PORT = 443
+    private val PortOfGoogleAPI = 443
 
-    private val PREFS = "SpeechService"
-    private val PREF_ACCESS_TOKEN_VALUE = "access_token_value"
-    private val SCOPE = Collections.singletonList("https://www.googleapis.com/auth/cloud-platform")
+    private val preferenceOfThis = "SpeechService"
+    private val prefAccessTokenValue = "access_token_value"
+    private val scopeOfGoogleAPI =
+        Collections.singletonList("https://www.googleapis.com/auth/cloud-platform")
 
     private val mBinder: SpeechBinder = SpeechBinder()
     private var mHandler: Handler? = null
@@ -80,10 +81,10 @@ class SpeechService : Service() {
                 }
             }
             override fun onCompleted() {
-                Log.i(TAG, "API completed.")
+                Log.i(mTag, "API completed.")
             }
             override fun onError(t: Throwable?) {
-                Log.e(TAG, "Error calling the API.", t)
+                Log.e(mTag, "Error calling the API.", t)
             }
         }
         mFileResponseObserver = object : StreamObserver<RecognizeResponse> {
@@ -107,11 +108,11 @@ class SpeechService : Service() {
                 }
             }
             override fun onCompleted() {
-                Log.i(TAG, "API completed.")
+                Log.i(mTag, "API completed.")
             }
 
             override fun onError(t: Throwable?) {
-                Log.e(TAG, "Error calling the API.", t)
+                Log.e(mTag, "Error calling the API.", t)
             }
         }
     }
@@ -129,7 +130,7 @@ class SpeechService : Service() {
                 try {
                     channel.shutdown().awaitTermination(5, TimeUnit.SECONDS)
                 } catch (e: InterruptedException) {
-                    Log.e(TAG, "Error shutting down the gRPC channel. $e")
+                    Log.e(mTag, "Error shutting down the gRPC channel. $e")
                 }
             }
         }
@@ -182,7 +183,7 @@ class SpeechService : Service() {
                 .build()
             mRequestObserver?.onNext(streamingRecognizeRequest)
         } ?: run {
-            Log.w(TAG, "API not ready. Ignoring the request")
+            Log.w(mTag, "API not ready. Ignoring the request")
             return
         }
     }
@@ -204,8 +205,8 @@ class SpeechService : Service() {
 
     private fun getAccessTokenFromPreference(): AccessToken? {
 
-        val prefs: SharedPreferences = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val tokenValue = prefs.getString(PREF_ACCESS_TOKEN_VALUE, null)
+        val prefs: SharedPreferences = getSharedPreferences(preferenceOfThis, Context.MODE_PRIVATE)
+        val tokenValue = prefs.getString(prefAccessTokenValue, null)
         val expirationTime: Long = prefs.getLong(PREF_ACCESS_TOKEN_EXPIRATION_TIME, -1L)
 
         return if (tokenValue.isNullOrEmpty() || expirationTime < 0) null
@@ -215,9 +216,9 @@ class SpeechService : Service() {
     }
 
     private fun saveTokenToPref(token: AccessToken) {
-        val prefs: SharedPreferences = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs: SharedPreferences = getSharedPreferences(preferenceOfThis, Context.MODE_PRIVATE)
         prefs.edit()
-            .putString(PREF_ACCESS_TOKEN_VALUE, token.tokenValue)
+            .putString(prefAccessTokenValue, token.tokenValue)
             .putLong(PREF_ACCESS_TOKEN_EXPIRATION_TIME, token.expirationTime.time)
             .apply()
     }
@@ -231,22 +232,22 @@ class SpeechService : Service() {
             val inputStream = resources.openRawResource(R.raw.credential)
             try {
                 val credentials = GoogleCredentials.fromStream(inputStream)
-                    .createScoped(SCOPE)
+                    .createScoped(scopeOfGoogleAPI)
                 val token = credentials.refreshAccessToken()
                 saveTokenToPref(token)
                 return token
             } catch (e: IOException) {
-                Log.e(TAG, "Fail to obtain access token $e")
+                Log.e(mTag, "Fail to obtain access token $e")
             }
             return null
         }
         override fun onPostExecute(result: AccessToken) { // Tokenの取得が済んだのち
             super.onPostExecute(result)
             mAccessTokenTask = null
-            val googleCredentials = GoogleCredentials(result).createScoped(SCOPE)
+            val googleCredentials = GoogleCredentials(result).createScoped(scopeOfGoogleAPI)
             val interceptor = GoogleCredentialsInterceptor(googleCredentials)
             val channel = OkHttpChannelProvider()
-                .builderForAddress(googleHostName, PORT)
+                .builderForAddress(googleHostName, PortOfGoogleAPI)
                 .nameResolverFactory(DnsNameResolverProvider())
                 .intercept(interceptor)
                 .build()

@@ -4,10 +4,9 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import kotlinx.coroutines.*
-import kotlin.concurrent.withLock
-import kotlin.math.abs
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.math.abs
 
 
 const val AMPLITUDE_THRESHOLD = 1500
@@ -72,11 +71,11 @@ class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) 
             val audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, cChannel, cEncoding, sizeInBytes)
             if (audioRecord.state == AudioRecord.STATE_INITIALIZED) {
                 mBuffer = ByteArray(sizeInBytes)
-                vModel.isAudioRecordworking.postValue(true)
+                vModel.isAudioRecording.postValue(true)
                 return audioRecord
             } else {
                 audioRecord.release()
-                vModel.isAudioRecordworking.postValue(false)
+                vModel.isAudioRecording.postValue(false)
             }
         }
         throw java.lang.RuntimeException("Cannot instantiate VoiceRecorder")

@@ -2,8 +2,6 @@ package com.example.gRPCTest
 
 
 import android.Manifest.permission
-import android.arch.lifecycle.Observer
-import android.arch.lifecycle.ViewModelProviders
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -12,11 +10,13 @@ import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.os.Bundle
 import android.os.IBinder
 import android.os.PersistableBundle
-import android.support.v4.app.ActivityCompat
-import android.support.v4.content.ContextCompat.checkSelfPermission
-import android.support.v7.app.AlertDialog
-import android.support.v7.app.AppCompatActivity
 import android.util.Log
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat.checkSelfPermission
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        vModel = ViewModelProviders.of(this@MainActivity).get(MainViewModel::class.java)
+        vModel = ViewModelProvider(this@MainActivity).get(MainViewModel::class.java)
 
         mColorHearing = getColor(R.color.status_hearing)
         mColorNotHearing = getColor(R.color.status_not_hearing)
@@ -79,7 +79,7 @@ class MainActivity : AppCompatActivity() {
                 ActivityCompat.requestPermissions(this, arrayOf(permission.RECORD_AUDIO), mRequestCodeRecord)
             }
         }
-        vModel.isAudioRecordworking.observe(this, Observer<Boolean> { t ->
+        vModel.isAudioRecording.observe(this, Observer<Boolean> { t ->
             if (t != null && t == true) audioRecorderStatus.setTextColor(mColorHearing)
             else audioRecorderStatus.setTextColor(mColorNotHearing)
         })

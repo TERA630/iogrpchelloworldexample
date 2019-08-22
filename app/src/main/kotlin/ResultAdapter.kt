@@ -1,13 +1,13 @@
 package com.example.gRPCTest
 
-import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import kotlinx.android.synthetic.main.item_result.view.*
 import java.util.*
 
-class ResultAdapter(private var mResults: ArrayList<String>, val viewModel: MainViewModel) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class ResultAdapter(private var mResults: ArrayList<String>, val viewModel: MainViewModel) :
+    androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
 
     fun addResult(result: String) {
         mResults.add(0, result)
@@ -21,14 +21,21 @@ class ResultAdapter(private var mResults: ArrayList<String>, val viewModel: Main
     override fun getItemCount(): Int = mResults.size
     fun getResults(): ArrayList<String> = mResults
 
-    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+    override fun onBindViewHolder(
+        holder: androidx.recyclerview.widget.RecyclerView.ViewHolder,
+        position: Int
+    ) {
         holder.itemView.rowText.text = mResults[position]
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+    override fun onCreateViewHolder(
+        parent: ViewGroup,
+        viewType: Int
+    ): androidx.recyclerview.widget.RecyclerView.ViewHolder {
         val rowView = LayoutInflater.from(parent.context).inflate(R.layout.item_result, parent, false)
         return ViewHolderOfCell(rowView)
     }
 
-    class ViewHolderOfCell(rowView: View) : RecyclerView.ViewHolder(rowView)
+    class ViewHolderOfCell(rowView: View) :
+        androidx.recyclerview.widget.RecyclerView.ViewHolder(rowView)
 }

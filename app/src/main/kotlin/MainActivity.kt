@@ -140,7 +140,7 @@ class MainActivity : AppCompatActivity() {
                 // text 現在までに認識されたお言葉｡ 　認識終了するとisFinal　= trueになる｡
                 if (isFinal) mVoiceRecorder?.dismiss()
                 if (text.isNotEmpty()) {
-                    val job = CoroutineScope(Dispatchers.Default).launch {
+                    CoroutineScope(Dispatchers.Default).launch {
                         vModel.isRecognizing.postValue(true)
                         vModel.recognizedChannel.send(text)
                     }

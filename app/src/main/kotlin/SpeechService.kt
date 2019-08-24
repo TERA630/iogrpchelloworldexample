@@ -1,6 +1,5 @@
 package com.example.gRPCTest
 
-import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -9,6 +8,7 @@ import android.os.Binder
 import android.os.Handler
 import android.os.IBinder
 import android.util.Log
+import androidx.lifecycle.LifecycleService
 import com.google.auth.Credentials
 import com.google.auth.oauth2.AccessToken
 import com.google.auth.oauth2.GoogleCredentials
@@ -18,6 +18,9 @@ import io.grpc.*
 import io.grpc.internal.DnsNameResolverProvider
 import io.grpc.okhttp.OkHttpChannelProvider
 import io.grpc.stub.StreamObserver
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import java.io.IOException
 import java.net.URI
 import java.net.URISyntaxException
@@ -25,13 +28,14 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
 
+
 /** We reuse an access token if its expiration time is longer than this.  */
 const val ACCESS_TOKEN_EXPIRATION_TOLERANCE = 30 * 60 * 1000 // thirty minutes
 /** We refresh the current access token before it expires.  */
 const val ACCESS_TOKEN_FETCH_MARGIN = 60 * 1000 // one minute
 const val PREF_ACCESS_TOKEN_EXPIRATION_TIME = "access_token_expiration_time"
 
-class SpeechService : Service() {
+class SpeechService : LifecycleService() {
     private val mTag = "SpeechService"
 
     private val googleHostName = "speech.googleapis.com"
@@ -45,6 +49,8 @@ class SpeechService : Service() {
     private val mBinder: SpeechBinder = SpeechBinder()
     private var mHandler: Handler? = null
     private var mAccessTokenTask: AccessTokenTask? = null
+    private val tokenJob = Job()
+    private val serviceScope = CoroutineScope(Dispatchers.Default + tokenJob)
     private val mListeners = mutableListOf<Listener>()
 
     //
@@ -56,6 +62,9 @@ class SpeechService : Service() {
     // Service lifecycle
     override fun onCreate() {
         super.onCreate()
+
+
+
 
         mHandler = Handler()
         fetchAccessToken()
@@ -117,10 +126,13 @@ class SpeechService : Service() {
         }
     }
     override fun onBind(intent: Intent): IBinder {
+        super.onBind(intent)
         return mBinder
     }
+
     override fun onDestroy() {
         super.onDestroy()
+        tokenJob.cancel()
         mHandler?.removeCallbacks(mFetchAccessTokenRunnable)
         mHandler = null
         // Release gRPC channel

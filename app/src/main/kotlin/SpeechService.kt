@@ -62,10 +62,6 @@ class SpeechService : LifecycleService() {
     // Service lifecycle
     override fun onCreate() {
         super.onCreate()
-
-
-
-
         mHandler = Handler()
         fetchAccessToken()
         mResponseObserver = object : StreamObserver<StreamingRecognizeResponse> {

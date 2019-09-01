@@ -5,7 +5,6 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlin.math.abs
 
 
@@ -13,12 +12,10 @@ const val AMPLITUDE_THRESHOLD = 1500
 const val SPEECH_TIMEOUT_MILLIS = 2000
 const val MAX_SPEECH_LENGTH_MILLIS = 30 * 1000
 
-
 class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) {
     private val cSampleRateCandidates = intArrayOf(16000, 11025, 22050, 44100)
     private val cChannel = AudioFormat.CHANNEL_IN_MONO
     private val cEncoding = AudioFormat.ENCODING_PCM_16BIT
-    private var processVoiceJob: Job? = null
 
     interface Callback { // 実装を今回はMainActivityに委譲
         fun onVoiceStart()  // called when the recorder starts hearing voice.
@@ -28,36 +25,39 @@ class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) 
     private lateinit var mAudioRecord: AudioRecord
     private lateinit var mBuffer: ByteArray
     private var mLock = Mutex()
-    private var mProcessVoiceJob: Job? = null
 
     private var mLastVoiceHeardMillis = java.lang.Long.MAX_VALUE
     private var mVoiceStartedMillis: Long = 0
 
+    private val supervisor = SupervisorJob()
+    val scope = CoroutineScope(Dispatchers.Default + supervisor)
+
     fun start() { // Called by MainActivity@StartvoiceRecorder
-        if (mProcessVoiceJob != null) stop() // if it is current ongoing, stop it.
         mAudioRecord = createAudioRecord()
         mAudioRecord.startRecording()
-        val scope = CoroutineScope(Dispatchers.Default)
-        mProcessVoiceJob = scope.launch {
-            mLock.withLock {
+
+        scope.launch {
+            //     mLock.withLock {
                 processVoice(scope)
-            }
+            //     }
         }
+
     }
     fun stop() {
-        mProcessVoiceJob?.cancel()
+        supervisor.cancel()
         dismiss()
-        runBlocking {
-                mAudioRecord.stop()
-                mAudioRecord.release()
-                processVoiceJob?.cancelAndJoin()
-        }
+        mAudioRecord.stop()
+        mAudioRecord.release()
     }
 
-    fun dismiss() { // Lock外した
-        if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
-            mLastVoiceHeardMillis = Long.MAX_VALUE
-            mCallback.onVoiceEnd()
+    fun dismiss() { // Lock外した →付け直
+        scope.launch {
+            //      mLock.withLock {
+            if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
+                mLastVoiceHeardMillis = Long.MAX_VALUE
+                mCallback.onVoiceEnd()
+                //           }
+            }
         }
     }
     fun getSampleRate() = mAudioRecord.sampleRate

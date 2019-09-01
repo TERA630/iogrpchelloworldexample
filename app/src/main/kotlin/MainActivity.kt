@@ -20,7 +20,6 @@ import androidx.lifecycle.ViewModelProvider
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 const val STATE_RESULTS = "results"
@@ -39,7 +38,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mSpeechServiceListener: SpeechService.Listener // initialized by on Create
     private lateinit var mServiceConnection: ServiceConnection // initialized by onCreate
     private lateinit var mVoiceCallback: VoiceRecorder.Callback // initialized by onCreate
-    private var mChannelJob: Job? = null
 
     // Activity life Cycle
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -138,18 +136,16 @@ class MainActivity : AppCompatActivity() {
         mSpeechServiceListener = object : SpeechService.Listener {
             override fun onSpeechRecognized(text: String, isFinal: Boolean) {
                 // text 現在までに認識されたお言葉｡ 　認識終了するとisFinal　= trueになる｡
-                if (isFinal) mVoiceRecorder?.dismiss()
+                if (isFinal) {
+                    mVoiceRecorder?.dismiss()
+                    vModel.isVoiceRecording.postValue(false)
+                    vModel.isRecognizing.postValue(false)
+                    mAdapter.addResult(text)
+                }
                 if (text.isNotEmpty()) {
                     CoroutineScope(Dispatchers.Default).launch {
                         vModel.isRecognizing.postValue(true)
                         vModel.recognizedChannel.send(text)
-                    }
-                    runOnUiThread {
-                        if (isFinal) {
-                            vModel.isVoiceRecording.value = false
-                            vModel.isRecognizing.postValue(false)
-                            mAdapter.addResult(text)
-                        }
                     }
                 }
             }
@@ -168,7 +164,7 @@ class MainActivity : AppCompatActivity() {
                 val sampleRate = mVoiceRecorder?.getSampleRate()
                 if (sampleRate != null && sampleRate != 0) {
                     mSpeechService?.startRecognizing(sampleRate)
-                    vModel.isVoiceRecording.postValue(true)
+
                 }
             }
             override fun onVoice(data: ByteArray, size: Int) {
@@ -177,35 +173,38 @@ class MainActivity : AppCompatActivity() {
             }
             override fun onVoiceEnd() {
                 mSpeechService?.finishRecognizing()
-                vModel.isVoiceRecording.postValue(false)
+
             }
         }
         startRecordingBtn.setOnClickListener {
-            if (mChannelJob == null) {
-                mChannelJob = CoroutineScope(Dispatchers.Main).launch {
-                    val channelText = vModel.recognizedChannel.receive()
-                    channelViewer.text = channelText
-                }
-            } else {
-                if (mChannelJob!!.isActive) {
-                    mChannelJob!!.cancel()
-                    return@setOnClickListener
-                }
-                else mChannelJob = CoroutineScope(Dispatchers.Main).launch {
-                    val channelText = vModel.recognizedChannel.receive()
-                    channelViewer.text = channelText
-                }
-            }
+
+            /*            if (mChannelJob == null) {
+                            mChannelJob = CoroutineScope(Dispatchers.Main).launch {
+                                val channelText = vModel.recognizedChannel.receive()
+                                channelViewer.text = channelText
+                            }
+                        } else {
+                            if (mChannelJob!!.isActive) {
+                                mChannelJob!!.cancel()
+                                return@setOnClickListener
+                            }
+                            else mChannelJob = CoroutineScope(Dispatchers.Main).launch {
+                                val channelText = vModel.recognizedChannel.receive()
+                                channelViewer.text = channelText
+                            }
+                        }*/
         }
     }
 
     private fun startVoiceRecorder() {
         mVoiceRecorder?.stop()
         mVoiceRecorder = VoiceRecorder(mVoiceCallback, vModel)
+        vModel.isVoiceRecording.postValue(true)
         mVoiceRecorder?.start()
     }
     private fun stopVoiceRecorder() {
         mVoiceRecorder?.stop()
         mVoiceRecorder = null
+        vModel.isVoiceRecording.postValue(false)
     }
 }

@@ -4,7 +4,6 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import kotlinx.coroutines.*
-import kotlinx.coroutines.sync.Mutex
 import kotlin.math.abs
 
 
@@ -12,7 +11,7 @@ const val AMPLITUDE_THRESHOLD = 1500
 const val SPEECH_TIMEOUT_MILLIS = 2000
 const val MAX_SPEECH_LENGTH_MILLIS = 30 * 1000
 
-class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) {
+class VoiceRecorder(private val mCallback: Callback, private val vModel: MainViewModel) {
     private val cSampleRateCandidates = intArrayOf(16000, 11025, 22050, 44100)
     private val cChannel = AudioFormat.CHANNEL_IN_MONO
     private val cEncoding = AudioFormat.ENCODING_PCM_16BIT
@@ -24,7 +23,6 @@ class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) 
     }
     private lateinit var mAudioRecord: AudioRecord
     private lateinit var mBuffer: ByteArray
-    private var mLock = Mutex()
 
     private var mLastVoiceHeardMillis = java.lang.Long.MAX_VALUE
     private var mVoiceStartedMillis: Long = 0
@@ -37,9 +35,7 @@ class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) 
         mAudioRecord.startRecording()
 
         scope.launch {
-            //     mLock.withLock {
-                processVoice(scope)
-            //     }
+            processVoice(scope)
         }
 
     }
@@ -50,16 +46,13 @@ class VoiceRecorder(private val mCallback: Callback, val vModel: MainViewModel) 
         mAudioRecord.release()
     }
 
-    fun dismiss() { // Lock外した →付け直
-        scope.launch {
-            //      mLock.withLock {
-            if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
-                mLastVoiceHeardMillis = Long.MAX_VALUE
-                mCallback.onVoiceEnd()
-                //           }
-            }
+    fun dismiss() { // Lock2回はずしあt
+        if (mLastVoiceHeardMillis != Long.MAX_VALUE) {
+            mLastVoiceHeardMillis = Long.MAX_VALUE
+            mCallback.onVoiceEnd()
         }
     }
+
     fun getSampleRate() = mAudioRecord.sampleRate
 
     private fun createAudioRecord(): AudioRecord {

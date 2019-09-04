@@ -13,6 +13,7 @@ class MainViewModel : ViewModel() {
     var isRecognizing: MutableLiveData<Boolean> = MutableLiveData<Boolean>().default(false)
 
     val recognizedChannel: Channel<String> = Channel()
+
 }
 
 

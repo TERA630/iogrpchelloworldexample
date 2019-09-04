@@ -177,7 +177,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         startRecordingBtn.setOnClickListener {
-
+            startVoiceRecorder()
             /*            if (mChannelJob == null) {
                             mChannelJob = CoroutineScope(Dispatchers.Main).launch {
                                 val channelText = vModel.recognizedChannel.receive()
@@ -193,6 +193,9 @@ class MainActivity : AppCompatActivity() {
                                 channelViewer.text = channelText
                             }
                         }*/
+        }
+        stopRecordingBtn.setOnClickListener {
+            stopVoiceRecorder()
         }
     }
 

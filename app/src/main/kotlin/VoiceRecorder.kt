@@ -7,7 +7,7 @@ import kotlinx.coroutines.*
 import kotlin.math.abs
 
 
-const val AMPLITUDE_THRESHOLD = 1500
+const val AMPLITUDE_THRESHOLD = 1280 // original 1500
 const val SPEECH_TIMEOUT_MILLIS = 2000
 const val MAX_SPEECH_LENGTH_MILLIS = 30 * 1000
 
@@ -35,6 +35,7 @@ class VoiceRecorder(private val mCallback: Callback, private val vModel: MainVie
         mAudioRecord.startRecording()
 
         scope.launch {
+            // conbinedContext element= DefaultDispatcher left supervisorJobImpl
             processVoice(scope)
         }
 

@@ -4,7 +4,6 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import kotlinx.coroutines.*
-import kotlin.math.abs
 
 
 const val AMPLITUDE_THRESHOLD = 1280 // original 1500
@@ -102,11 +101,14 @@ class VoiceRecorder(private val mCallback: Callback, private val vModel: MainVie
 
     private fun isHearingVoice(buffer: ByteArray, size: Int): Boolean {
         for (i in 0 until size - 1 step 2) { // Android writing out big endian
-            var s = buffer[i + 1].toInt() // Little endian  上位バイト
-            if (s < 0) s *= -1 // 負数なら正数に
-            s = s shl 8 // 上位バイト　
-            s += abs(buffer[i].toInt()) //　下位バイト
-                if (s > AMPLITUDE_THRESHOLD) return true
+            val upperByte = buffer[i + 1].toInt() // Little endian  上位バイト
+//            if (s < 0) s *= -1 // 負数なら正数に
+//            s = s shl 8 // 上位バイト　
+//            s += abs(buffer[i].toInt()) //　下位バイト
+//                if (s > AMPLITUDE_THRESHOLD) return true
+            if (upperByte > 0x05) {
+                return true
+            }
         }
         return false
     }

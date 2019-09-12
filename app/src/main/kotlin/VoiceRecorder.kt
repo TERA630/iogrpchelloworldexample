@@ -4,7 +4,10 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import kotlinx.coroutines.*
+import kotlin.math.abs
 
+
+const val AMPLITUDE_THRESHOLD = 1280 // original 1500
 const val AMPLITUDE_THRESHOLD = 0x05
 const val SPEECH_TIMEOUT_MILLIS = 2000
 const val MAX_SPEECH_LENGTH_MILLIS = 30 * 1000

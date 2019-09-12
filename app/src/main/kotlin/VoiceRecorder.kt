@@ -4,10 +4,10 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import kotlinx.coroutines.*
-import kotlin.math.abs
+import kotlinx.coroutines.channels.actor
+import kotlinx.coroutines.channels.consumeEach
 
 
-const val AMPLITUDE_THRESHOLD = 1280 // original 1500
 const val AMPLITUDE_THRESHOLD = 0x05
 const val SPEECH_TIMEOUT_MILLIS = 2000
 const val MAX_SPEECH_LENGTH_MILLIS = 30 * 1000
@@ -16,6 +16,7 @@ class VoiceRecorder(private val mCallback: Callback, private val vModel: MainVie
     private val cSampleRateCandidates = intArrayOf(16000, 11025, 22050, 44100)
     private val cChannel = AudioFormat.CHANNEL_IN_MONO
     private val cEncoding = AudioFormat.ENCODING_PCM_16BIT
+    private val ack = CompletableDeferred<Boolean>()
 
     interface Callback { // 実装を今回はMainActivityに委譲
         fun onVoiceStart()  // called when the recorder starts hearing voice.
@@ -30,18 +31,28 @@ class VoiceRecorder(private val mCallback: Callback, private val vModel: MainVie
 
     private val supervisor = SupervisorJob()
     val scope = CoroutineScope(Dispatchers.Default + supervisor)
-
+    @ObsoleteCoroutinesApi
+    private val actor =
+        scope.actor<ActionMsg>(scope.coroutineContext, 0, CoroutineStart.DEFAULT, null, {
+            consumeEach { actionMsg ->
+                when (actionMsg) {
+                    is Activate -> processVoice(scope)
+                }
+            }
+        })
     fun start() { // Called by MainActivity@StartvoiceRecorder
         mAudioRecord = createAudioRecord()
         mAudioRecord.startRecording()
-
+        val msg = Activate(1)
         scope.launch {
-            processVoice(scope)
+            actor.send(msg)
         }
-
     }
     fun stop() {
-        supervisor.cancel()
+        scope.launch {
+            actor.send(Done(ack))
+            ack.await()
+        }
         dismiss()
         mAudioRecord.stop()
         mAudioRecord.release()
@@ -112,3 +123,8 @@ class VoiceRecorder(private val mCallback: Callback, private val vModel: MainVie
         return false
     }
 }
+
+
+sealed class ActionMsg
+class Activate(id: Int) : ActionMsg()
+class Done(ack: CompletableDeferred<Boolean>) : ActionMsg()

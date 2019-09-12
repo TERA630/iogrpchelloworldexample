@@ -173,6 +173,7 @@ class MainActivity : AppCompatActivity() {
             }
             override fun onVoiceEnd() {
                 mSpeechService?.finishRecognizing()
+                vModel.isVoiceRecording.postValue(false)
 
             }
         }

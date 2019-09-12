@@ -164,7 +164,7 @@ class MainActivity : AppCompatActivity() {
                 val sampleRate = mVoiceRecorder?.getSampleRate()
                 if (sampleRate != null && sampleRate != 0) {
                     mSpeechService?.startRecognizing(sampleRate)
-
+                    vModel.isVoiceRecording.postValue(true)
                 }
             }
             override fun onVoice(data: ByteArray, size: Int) {

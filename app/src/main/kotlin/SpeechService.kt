@@ -1,5 +1,6 @@
 package com.example.gRPCTest
 
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -49,8 +50,8 @@ class SpeechService : LifecycleService() {
     private val mBinder: SpeechBinder = SpeechBinder()
     private var mHandler: Handler? = null
     private var mAccessTokenTask: AccessTokenTask? = null
-    private val tokenJob = Job()
-    private val serviceScope = CoroutineScope(Dispatchers.Default + tokenJob)
+  //  private val tokenJob = Job()
+  //  private val serviceScope = CoroutineScope(Dispatchers.Default + tokenJob)
     private val mListeners = mutableListOf<Listener>()
 
     //
@@ -103,7 +104,6 @@ class SpeechService : LifecycleService() {
                             val alternative = result.getAlternatives(0)
                             text = alternative.transcript
                         }
-
                     }
                 }
                 if (text.isNotEmpty()) {
@@ -125,10 +125,8 @@ class SpeechService : LifecycleService() {
         super.onBind(intent)
         return mBinder
     }
-
     override fun onDestroy() {
         super.onDestroy()
-        tokenJob.cancel()
         mHandler?.removeCallbacks(mFetchAccessTokenRunnable)
         mHandler = null
         // Release gRPC channel
@@ -202,8 +200,6 @@ class SpeechService : LifecycleService() {
             .build()
         mRequestObserver?.onNext(streamingRecognizeRequest)
     }
-
-
     fun finishRecognizing() {
         mRequestObserver?.let {
             it.onCompleted()
@@ -380,4 +376,3 @@ class SpeechService : LifecycleService() {
         }
     }
 }
-
